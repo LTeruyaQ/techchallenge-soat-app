@@ -57,7 +57,13 @@ graph TB
     style CORE fill:#e8f5e9,stroke:#1b5e20,stroke-width:3px
 ```
 
-### 2.1. Desenho do fluxo CI/CD
+### 2.2. Diagrama de Sequência
+
+O diagrama abaixo ilustra o fluxo de execução de uma requisição através das camadas da aplicação:
+
+![Diagrama de Sequência](diagramaSequencia.svg)
+
+### 2.3. Desenho do fluxo CI/CD
 
 O diagrama abaixo ilustra o fluxo de deploy.
 
@@ -109,7 +115,7 @@ graph TD
     4. A imagem é enviada para um registro de contêiner (ex: Docker Hub, AWS ECR).
     5. A pipeline de CD se conecta ao cluster Kubernetes e aplica os manifestos do diretório `k8s/`, atualizando a aplicação para a nova versão.
 
-### 2.2. Tecnologias Utilizadas
+### 2.4. Tecnologias Utilizadas
 
 | Categoria | Tecnologia |
 |---|---|
