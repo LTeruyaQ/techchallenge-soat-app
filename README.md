@@ -15,11 +15,9 @@ Nesta segunda fase, o projeto evoluiu para aplicar conceitos avançados de arqui
 
 ---
 
-## 2. Arquitetura da Solução
+## 2. Arquitetura CI/CD
 
-A arquitetura foi desenhada para ser desacoplada, resiliente e observável, utilizando contêineres, orquestração e IaC para garantir a escalabilidade e a repetibilidade do ambiente.
-
-### 2.1. Desenho da Arquitetura
+### 2.1. Desenho do fluxo CI/CD
 
 O diagrama abaixo ilustra os componentes da aplicação, a infraestrutura provisionada e o fluxo de deploy.
 
@@ -169,6 +167,17 @@ Após provisionar a infraestrutura, siga os passos para o deploy da aplicação.
 
 4. **Acesse os serviços:**
    - A URL da API será exposta por um Load Balancer ou Ingress. Verifique com `kubectl get services`.
+     
+### 4.4. Configuração de Secrets 
+
+Para rodar o projeto localmente, é necessário configurar a variável secreta que o projeto utiliza.
+
+**Passos para configurar user-secrets:**
+
+1. Abra o terminal na pasta do projeto API onde está o arquivo .csproj.
+2. Inicialize o user-secrets (caso ainda não tenha feito): ```dotnet user-secrets init```
+3. Adicione a secret necessária: ```dotnet user-secrets set "SendGrid:ApiKey" "<SUA_CHAVE_SENDGRID_AQUI>"```
+4. Confirme que a secret foi configurada: ```dotnet user-secrets list```
 
 ---
 
@@ -185,4 +194,4 @@ Após provisionar a infraestrutura, siga os passos para o deploy da aplicação.
 ## 6. Documentação da API e Vídeo
 
 - **Link para a Collection (Swagger):** A documentação é gerada automaticamente e está disponível no endpoint `/swagger` da API.
-- **Link para o Vídeo Demonstrativo:** `[INSIRA O LINK AQUI]`
+- **Link para o Vídeo Demonstrativo:** `https://www.youtube.com/watch?v=RrqENX_aCxQ`
