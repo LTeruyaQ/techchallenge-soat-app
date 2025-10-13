@@ -61,7 +61,7 @@ graph TB
 
 O diagrama abaixo ilustra o fluxo de execução de uma requisição através das camadas da aplicação:
 
-![Diagrama de Sequência](diagramaSequencia.svg)
+![Diagrama de Sequência](diagramaSequencia.png)
 
 ### 2.3. Desenho do fluxo CI/CD
 
