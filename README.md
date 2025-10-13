@@ -15,11 +15,51 @@ Nesta segunda fase, o projeto evoluiu para aplicar conceitos avançados de arqui
 
 ---
 
-## 2. Arquitetura CI/CD
+## 2. Arquitetura
+
+### 2.1 Arquitetura da aplicação
+
+O diagrama abaixo ilustra os componentes da aplicação
+
+```mermaid
+
+graph TB
+    subgraph FD["FRAMEWORKS & DEVICES"]
+        direction TB
+        API["API Layer<br/>Controllers REST<br/>Background Jobs<br/>Middlewares"]
+        INFRA["Infrastructure Layer<br/>PostgreSQL + EF Core<br/>Repositórios<br/>Serviços Externos"]
+    end
+
+    subgraph IA["INTERFACE & ADAPTERS"]
+        direction TB
+        CONTROLLERS["Adapter Controllers<br/>Orquestração Cross-Domain"]
+        GATEWAYS["Gateways<br/>Conversão Entidades ↔ DTOs"]
+        PRESENTERS["Presenters<br/>Formatação de Respostas"]
+    end
+
+    subgraph CORE["CORE"]
+        direction TB
+        ENTITIES["Entidades de Domínio<br/>Cliente | OrdemServico<br/>Veiculo | Usuario<br/>Estoque | Servico"]
+        USECASES["Use Cases<br/>Facades + Handlers<br/>32 Handlers Individuais"]
+        RULES["Regras de Negócio<br/>Validações<br/>Especificações<br/>Exceptions"]
+    end
+
+    API --> CONTROLLERS
+    CONTROLLERS --> USECASES
+    USECASES --> GATEWAYS
+    GATEWAYS --> INFRA
+    USECASES --> ENTITIES
+    USECASES --> RULES
+    CONTROLLERS --> PRESENTERS
+
+    style FD fill:#e1f5ff,stroke:#01579b,stroke-width:3px
+    style IA fill:#f3e5f5,stroke:#4a148c,stroke-width:3px
+    style CORE fill:#e8f5e9,stroke:#1b5e20,stroke-width:3px
+```
 
 ### 2.1. Desenho do fluxo CI/CD
 
-O diagrama abaixo ilustra os componentes da aplicação, a infraestrutura provisionada e o fluxo de deploy.
+O diagrama abaixo ilustra o fluxo de deploy.
 
 ```mermaid
 graph TD
