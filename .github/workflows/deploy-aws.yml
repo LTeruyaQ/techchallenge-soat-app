@@ -1,0 +1,228 @@
+# ============================================
+# Deploy para AWS Academy via Terraform
+# ============================================
+#
+# Este workflow faz o deploy do MecanicaOS na AWS Academy
+# usando Terraform para provisionar EKS.
+#
+# IMPORTANTE: Configure os secrets no GitHub:
+# - AWS_ACCESS_KEY_ID
+# - AWS_SECRET_ACCESS_KEY
+# - AWS_SESSION_TOKEN (obrigatório para AWS Academy)
+# - EKS_CLUSTER_ROLE_NAME
+# - EKS_NODE_ROLE_NAME
+# - DB_HOST
+# - DB_PASSWORD
+# - JWT_SECRET_KEY
+#
+# ============================================
+
+name: Deploy AWS Academy
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Ação a executar'
+        required: true
+        default: 'plan'
+        type: choice
+        options:
+          - plan
+          - apply
+          - destroy
+      environment:
+        description: 'Ambiente'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+
+env:
+  TF_VERSION: '1.5.0'
+  AWS_REGION: 'us-east-1'
+  TF_WORKING_DIR: './terraform'
+
+jobs:
+  # ============================================
+  # Job: Terraform Plan/Apply/Destroy
+  # ============================================
+  terraform:
+    name: 'Terraform ${{ github.event.inputs.action }}'
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    defaults:
+      run:
+        working-directory: ${{ env.TF_WORKING_DIR }}
+
+    steps:
+      # ============================================
+      # Checkout
+      # ============================================
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # ============================================
+      # Configurar AWS Credentials
+      # ============================================
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ============================================
+      # Verificar credenciais AWS
+      # ============================================
+      - name: Verificar credenciais AWS
+        run: |
+          echo "🔍 Verificando credenciais AWS..."
+          aws sts get-caller-identity
+          echo "✅ Credenciais válidas!"
+
+      # ============================================
+      # Setup Terraform
+      # ============================================
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      # ============================================
+      # Criar terraform.tfvars
+      # ============================================
+      - name: Criar arquivo terraform.tfvars
+        run: |
+          cat > terraform.tfvars << EOF
+          # Configurações Gerais
+          aws_region   = "${{ env.AWS_REGION }}"
+          project_name = "mecanicaos"
+          environment  = "${{ github.event.inputs.environment }}"
+
+          # IAM Roles do AWS Academy
+          eks_cluster_role_name = "${{ secrets.EKS_CLUSTER_ROLE_NAME }}"
+          eks_node_role_name    = "${{ secrets.EKS_NODE_ROLE_NAME }}"
+
+          # EKS
+          instance_types    = ["t3.medium"]
+          node_desired_size = 2
+          node_max_size     = 3
+          node_min_size     = 1
+
+          # Kubernetes
+          replicas     = 2
+          docker_image = "ghcr.io/${{ github.repository_owner }}/mecanicaos-api:latest"
+
+          # Banco de dados
+          db_host     = "${{ secrets.DB_HOST }}"
+          db_port     = "5432"
+          db_name     = "postgres"
+          db_username = "postgres"
+          db_password = "${{ secrets.DB_PASSWORD }}"
+
+          # JWT
+          jwt_secret_key     = "${{ secrets.JWT_SECRET_KEY }}"
+          jwt_issuer         = "MecanicaOS"
+          jwt_audience       = "MecanicaOS-API"
+          jwt_expiry_minutes = 120
+          EOF
+          
+          echo "✅ Arquivo terraform.tfvars criado!"
+
+      # ============================================
+      # Terraform Init
+      # ============================================
+      - name: Terraform Init
+        run: terraform init
+
+      # ============================================
+      # Terraform Validate
+      # ============================================
+      - name: Terraform Validate
+        run: terraform validate
+
+      # ============================================
+      # Terraform Plan
+      # ============================================
+      - name: Terraform Plan
+        if: github.event.inputs.action == 'plan' || github.event.inputs.action == 'apply'
+        run: |
+          echo "📋 Executando terraform plan..."
+          terraform plan -out=tfplan
+        
+      # ============================================
+      # Terraform Apply
+      # ============================================
+      - name: Terraform Apply
+        if: github.event.inputs.action == 'apply'
+        run: |
+          echo "🚀 Executando terraform apply..."
+          terraform apply -auto-approve tfplan
+
+      # ============================================
+      # Terraform Destroy
+      # ============================================
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
+        run: |
+          echo "🗑️ Executando terraform destroy..."
+          terraform destroy -auto-approve
+
+      # ============================================
+      # Outputs
+      # ============================================
+      - name: Mostrar Outputs
+        if: github.event.inputs.action == 'apply'
+        run: |
+          echo "📤 Outputs do Terraform:"
+          terraform output
+          
+          echo ""
+          echo "============================================"
+          echo "🎉 Deploy concluído com sucesso!"
+          echo "============================================"
+          echo ""
+          echo "Para configurar kubectl localmente:"
+          terraform output -raw kubectl_config_command
+          echo ""
+
+      # ============================================
+      # Configurar kubectl e verificar deploy
+      # ============================================
+      - name: Verificar deploy no Kubernetes
+        if: github.event.inputs.action == 'apply'
+        run: |
+          echo "🔧 Configurando kubectl..."
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name $(terraform output -raw eks_cluster_name)
+          
+          echo ""
+          echo "📦 Verificando pods..."
+          kubectl get pods -n mecanicaos || echo "Namespace ainda não existe ou pods não iniciaram"
+          
+          echo ""
+          echo "🌐 Verificando services..."
+          kubectl get svc -n mecanicaos || echo "Namespace ainda não existe"
+
+  # ============================================
+  # Job: Notificação (opcional)
+  # ============================================
+  notify:
+    name: 'Notificar resultado'
+    needs: terraform
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+      - name: Resultado do deploy
+        run: |
+          if [ "${{ needs.terraform.result }}" == "success" ]; then
+            echo "✅ Deploy executado com sucesso!"
+          else
+            echo "❌ Deploy falhou!"
+            exit 1
+          fi

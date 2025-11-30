@@ -1,0 +1,203 @@
+# ============================================
+# Deploy Kubernetes - Atualizar apenas a aplicação
+# ============================================
+#
+# Este workflow atualiza apenas o deployment no EKS
+# sem recriar a infraestrutura (mais rápido).
+#
+# Use quando:
+# - A infraestrutura já existe
+# - Quer apenas atualizar a imagem da aplicação
+#
+# ============================================
+
+name: Deploy Kubernetes
+
+on:
+  # Trigger manual
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: 'Tag da imagem Docker'
+        required: true
+        default: 'latest'
+  
+  # Trigger automático após CD
+  workflow_run:
+    workflows: ["CD"]
+    types:
+      - completed
+    branches:
+      - Main
+
+env:
+  AWS_REGION: 'us-east-1'
+  EKS_CLUSTER_NAME: 'eks-mecanicaos'
+  NAMESPACE: 'mecanicaos'
+
+jobs:
+  deploy:
+    name: 'Deploy to EKS'
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      # ============================================
+      # Checkout
+      # ============================================
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      # ============================================
+      # Configurar AWS Credentials
+      # ============================================
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # ============================================
+      # Verificar credenciais
+      # ============================================
+      - name: Verificar credenciais AWS
+        run: |
+          echo "🔍 Verificando credenciais AWS..."
+          aws sts get-caller-identity
+          echo "✅ Credenciais válidas!"
+
+      # ============================================
+      # Configurar kubectl
+      # ============================================
+      - name: Configurar kubectl
+        run: |
+          echo "🔧 Configurando kubectl..."
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+          
+          echo "✅ kubectl configurado!"
+          kubectl cluster-info
+
+      # ============================================
+      # Determinar tag da imagem
+      # ============================================
+      - name: Determinar tag da imagem
+        id: image_tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.image_tag }}"
+          else
+            TAG="latest"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "📦 Tag da imagem: $TAG"
+
+      # ============================================
+      # Atualizar Deployment
+      # ============================================
+      - name: Atualizar deployment
+        run: |
+          OWNER_LC=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE="ghcr.io/${OWNER_LC}/mecanicaos-api:${{ steps.image_tag.outputs.tag }}"
+          
+          echo "🚀 Atualizando deployment com imagem: $IMAGE"
+          
+          # Verificar se o namespace existe
+          if ! kubectl get namespace ${{ env.NAMESPACE }} > /dev/null 2>&1; then
+            echo "⚠️ Namespace ${{ env.NAMESPACE }} não existe. Criando..."
+            kubectl create namespace ${{ env.NAMESPACE }}
+          fi
+          
+          # Atualizar a imagem do deployment
+          kubectl set image deployment/mecanicaos-api \
+            mecanicaos-api=$IMAGE \
+            -n ${{ env.NAMESPACE }} || {
+              echo "⚠️ Deployment não existe. Aplicando manifesto completo..."
+              kubectl apply -f - <<EOF
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: mecanicaos-api
+            namespace: ${{ env.NAMESPACE }}
+          spec:
+            replicas: 2
+            selector:
+              matchLabels:
+                app: mecanicaos-api
+            template:
+              metadata:
+                labels:
+                  app: mecanicaos-api
+              spec:
+                containers:
+                - name: mecanicaos-api
+                  image: $IMAGE
+                  ports:
+                  - containerPort: 80
+                  env:
+                  - name: ASPNETCORE_ENVIRONMENT
+                    value: "production"
+                  - name: ASPNETCORE_URLS
+                    value: "http://+:80"
+                  - name: ConnectionStrings__DefaultConnection
+                    value: "Host=${{ secrets.DB_HOST }};Port=5432;Database=postgres;Username=postgres;Password=${{ secrets.DB_PASSWORD }};SSL Mode=Require"
+                  - name: Jwt__SecretKey
+                    value: "${{ secrets.JWT_SECRET_KEY }}"
+                  - name: Jwt__Issuer
+                    value: "MecanicaOS"
+                  - name: Jwt__Audience
+                    value: "MecanicaOS-API"
+                  - name: Jwt__ExpiryInMinutes
+                    value: "120"
+          EOF
+            }
+
+      # ============================================
+      # Verificar rollout
+      # ============================================
+      - name: Verificar rollout
+        run: |
+          echo "⏳ Aguardando rollout..."
+          kubectl rollout status deployment/mecanicaos-api -n ${{ env.NAMESPACE }} --timeout=300s
+          
+          echo ""
+          echo "✅ Rollout concluído!"
+
+      # ============================================
+      # Verificar pods
+      # ============================================
+      - name: Verificar pods
+        run: |
+          echo "📦 Status dos pods:"
+          kubectl get pods -n ${{ env.NAMESPACE }} -o wide
+          
+          echo ""
+          echo "🌐 Status dos services:"
+          kubectl get svc -n ${{ env.NAMESPACE }}
+
+      # ============================================
+      # Obter URL do LoadBalancer
+      # ============================================
+      - name: Obter URL da aplicação
+        run: |
+          echo "🔍 Obtendo URL do LoadBalancer..."
+          
+          # Aguardar o LoadBalancer ter um hostname
+          for i in {1..30}; do
+            LB_URL=$(kubectl get svc mecanicaos-service -n ${{ env.NAMESPACE }} -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || true)
+            if [ -n "$LB_URL" ]; then
+              echo ""
+              echo "============================================"
+              echo "🎉 Deploy concluído com sucesso!"
+              echo "============================================"
+              echo ""
+              echo "🌐 URL da aplicação: http://$LB_URL"
+              echo ""
+              exit 0
+            fi
+            echo "⏳ Aguardando LoadBalancer... ($i/30)"
+            sleep 10
+          done
+          
+          echo "⚠️ LoadBalancer ainda não tem hostname. Verifique manualmente."
