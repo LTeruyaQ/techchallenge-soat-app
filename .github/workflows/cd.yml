@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [ "Main" ]
 
+env:
+  AWS_REGION: 'us-east-1'
+  ECR_REPOSITORY: 'mecanicaos-ecr'
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -31,7 +35,7 @@ jobs:
         id: convert_owner
         run: echo "name=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_OUTPUT
 
-      - name: Construir e enviar a imagem Docker
+      - name: Construir e enviar a imagem Docker para GHCR
         uses: docker/build-push-action@v4
         with:
           context: .
@@ -40,6 +44,34 @@ jobs:
           tags: |
             ghcr.io/${{ steps.convert_owner.outputs.name }}/mecanicaos-api:${{ steps.get_sha.outputs.sha }}
             ghcr.io/${{ steps.convert_owner.outputs.name }}/mecanicaos-api:latest
+
+      # Push para ECR (se credenciais AWS estiverem configuradas)
+      - name: Configurar credenciais AWS
+        if: github.event_name == 'push' && github.ref == 'refs/heads/Main'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+        continue-on-error: true
+
+      - name: Login no Amazon ECR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/Main'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+        continue-on-error: true
+
+      - name: Push para ECR
+        if: steps.login-ecr.outcome == 'success'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker tag ghcr.io/${{ steps.convert_owner.outputs.name }}/mecanicaos-api:${{ steps.get_sha.outputs.sha }} ${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${{ steps.get_sha.outputs.sha }}
+          docker tag ghcr.io/${{ steps.convert_owner.outputs.name }}/mecanicaos-api:latest ${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:latest
+          docker push ${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${{ steps.get_sha.outputs.sha }}
+          docker push ${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:latest
+          echo "✅ Imagem enviada para ECR: ${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${{ steps.get_sha.outputs.sha }}"
 
   validate-k8s-manifests:
     needs: build-and-push

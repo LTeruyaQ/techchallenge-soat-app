@@ -27,6 +27,16 @@ output "eks_cluster_endpoint" {
   value       = aws_eks_cluster.eks.endpoint
 }
 
+output "ecr_repository_url" {
+  description = "URL do repositório ECR"
+  value       = aws_ecr_repository.app.repository_url
+}
+
+output "docker_image" {
+  description = "Imagem Docker utilizada no deployment"
+  value       = local.docker_image
+}
+
 # ============================================
 # Comandos Úteis
 # ============================================
