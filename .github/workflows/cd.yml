@@ -101,3 +101,90 @@ jobs:
             -schema-location default \
             -schema-location 'https://raw.githubusercontent.com/yannh/kubernetes-json-schema/master/{{.NormalizedKubernetesVersion}}-standalone-strict/{{.ResourceKind}}.json' \
             -kubernetes-version 1.30.0 k8s/
+
+  # ============================================
+  # Job 3: Deploy no EKS (apenas em push para Main)
+  # ============================================
+  deploy-eks:
+    name: 'Deploy to EKS'
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/Main'
+    
+    steps:
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verificar credenciais AWS
+        id: check-aws
+        run: |
+          if aws sts get-caller-identity > /dev/null 2>&1; then
+            echo "aws_valid=true" >> $GITHUB_OUTPUT
+            echo "✅ Credenciais AWS válidas"
+          else
+            echo "aws_valid=false" >> $GITHUB_OUTPUT
+            echo "⚠️ Credenciais AWS inválidas ou expiradas - pulando deploy"
+          fi
+
+      - name: Configurar kubectl
+        if: steps.check-aws.outputs.aws_valid == 'true'
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name eks-mecanicaos
+          echo "✅ kubectl configurado para eks-mecanicaos"
+
+      - name: Atualizar imagem e reiniciar pods
+        if: steps.check-aws.outputs.aws_valid == 'true'
+        env:
+          IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+        run: |
+          echo "🚀 Atualizando deployment com nova imagem..."
+          
+          # Obter o registry do ECR
+          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+          ECR_IMAGE="${ACCOUNT_ID}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}:${IMAGE_TAG}"
+          
+          echo "Nova imagem: ${ECR_IMAGE}"
+          
+          # Atualizar a imagem do deployment
+          kubectl set image deployment/mecanicaos-api \
+            mecanicaos-api=${ECR_IMAGE} \
+            -n mecanicaos
+          
+          # Aguardar rollout
+          echo "⏳ Aguardando rollout..."
+          kubectl rollout status deployment/mecanicaos-api -n mecanicaos --timeout=300s
+          
+          echo "✅ Deploy concluído!"
+
+      - name: Verificar status do deploy
+        if: steps.check-aws.outputs.aws_valid == 'true'
+        run: |
+          echo "📊 Status dos pods:"
+          kubectl get pods -n mecanicaos
+          
+          echo ""
+          echo "🌐 URL do LoadBalancer:"
+          LB_URL=$(kubectl get svc mecanicaos-service -n mecanicaos -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+          echo "Swagger UI: http://${LB_URL}/docs"
+          echo "ReDoc: http://${LB_URL}/api-docs"
+          
+          echo ""
+          echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Tag:** ${{ needs.build-and-push.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Swagger UI:** http://${LB_URL}/docs" >> $GITHUB_STEP_SUMMARY
+          echo "- **ReDoc:** http://${LB_URL}/api-docs" >> $GITHUB_STEP_SUMMARY
+
+      - name: Deploy pulado (credenciais inválidas)
+        if: steps.check-aws.outputs.aws_valid != 'true'
+        run: |
+          echo "⚠️ Deploy pulado - credenciais AWS não configuradas ou expiradas"
+          echo "Para fazer deploy manual, execute o workflow 'Deploy ECR + EKS'"
+          echo ""
+          echo "## ⚠️ Deploy Pulado" >> $GITHUB_STEP_SUMMARY
+          echo "Credenciais AWS não configuradas ou expiradas." >> $GITHUB_STEP_SUMMARY
+          echo "Execute o workflow **Deploy ECR + EKS** manualmente." >> $GITHUB_STEP_SUMMARY
