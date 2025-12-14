@@ -25,3 +25,9 @@ jwt_secret_key     = "5sBGFgI5yhtbfB50Xyohk9RLX/pWX7mRRLSP1pwceIdyD/Is6DkG6QTjEL
 jwt_issuer         = "MecanicaOS"
 jwt_audience       = "MecanicaOS-API"
 jwt_expiry_minutes = 120
+
+# OpenTelemetry
+otel_service_name           = "mecanicaos-api"
+otel_exporter_otlp_endpoint = "http://otel-collector.observability:4317"
+datadog_api_key             = "e0f3dea9093bbb0e07c8a113afb986d3"
+newrelic_license_key        = "f744030d61e4cf2b9c652cdca9024fe2FFFFNRAL"

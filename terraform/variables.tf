@@ -176,3 +176,31 @@ variable "jwt_expiry_minutes" {
   type        = number
   default     = 120
 }
+
+# ============================================
+# Variáveis do OpenTelemetry
+# ============================================
+
+variable "otel_service_name" {
+  description = "Nome do serviço para OpenTelemetry"
+  type        = string
+  default     = "mecanicaos-api"
+}
+
+variable "otel_exporter_otlp_endpoint" {
+  description = "Endpoint do OpenTelemetry Collector"
+  type        = string
+  default     = "http://otel-collector.observability:4317"
+}
+
+variable "datadog_api_key" {
+  description = "API Key do Datadog"
+  type        = string
+  sensitive   = true
+}
+
+variable "newrelic_license_key" {
+  description = "License Key do New Relic"
+  type        = string
+  sensitive   = true
+}
