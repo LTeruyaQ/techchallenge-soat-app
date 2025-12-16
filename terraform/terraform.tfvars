@@ -3,12 +3,13 @@ project_name         = "mecanicaos"
 environment          = "production"
 
 # Roles do AWS Academy (nomes corretos obtidos do IAM)
-eks_cluster_role_name = "c184635a4783074l13015582t1w986773-LabEksClusterRole-pUvbkhHBzJA1"
-eks_node_role_name    = "c184635a4783074l13015582t1w986773187-LabEksNodeRole-jDe3aIJ8I9XR"
+eks_cluster_role_name = "c190909a4920103l13171091t1w339713-LabEksClusterRole-rtUJlxP1VN6O"
+eks_node_role_name    = "c190909a4920103l13171091t1w339713065-LabEksNodeRole-IywB1ohzSsEW"
 
 # ECR
 docker_image_repo = "mecanicaos-ecr"
-docker_image_tag  = "20251206-192659"
+docker_image_tag  = "20251215-211528"
+# docker_image_tag é gerado automaticamente pelo deploy-completo.ps1
 
 # Kubernetes
 replicas = 2
@@ -31,3 +32,4 @@ otel_service_name           = "mecanicaos-api"
 otel_exporter_otlp_endpoint = "http://otel-collector.observability:4317"
 datadog_api_key             = "e0f3dea9093bbb0e07c8a113afb986d3"
 newrelic_license_key        = "f744030d61e4cf2b9c652cdca9024fe2FFFFNRAL"
+

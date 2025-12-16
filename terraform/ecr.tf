@@ -3,7 +3,8 @@
 # ============================================
 
 resource "aws_ecr_repository" "app" {
-  name = var.docker_image_repo
+  name         = var.docker_image_repo
+  force_delete = true
 
   image_scanning_configuration {
     scan_on_push = true

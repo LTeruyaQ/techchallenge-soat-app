@@ -10,6 +10,7 @@
 # 5. Push para ECR
 # 6. Deploy da infraestrutura com Terraform
 # 7. Verifica o deploy no Kubernetes
+# 8. Verifica OpenTelemetry Collector (Datadog + New Relic)
 #
 # Uso:
 #   .\deploy-completo.ps1                    # Deploy completo
@@ -192,6 +193,27 @@ if ($tfvarsContent -match "LabRole" -and $tfvarsContent -notmatch "LabEks") {
     }
 }
 
+# Verificar configuração do OpenTelemetry (Datadog e New Relic)
+Write-Step "Verificando configuracao do OpenTelemetry..."
+$hasDatadog = $tfvarsContent -match 'datadog_api_key\s*=\s*"[^"]+"'
+$hasNewRelic = $tfvarsContent -match 'newrelic_license_key\s*=\s*"[^"]+"'
+
+if (-not $hasDatadog -or -not $hasNewRelic) {
+    Write-Warning "Configuracao do OpenTelemetry incompleta!"
+    Write-Host ""
+    Write-Host "Para habilitar observabilidade, adicione ao terraform.tfvars:" -ForegroundColor Yellow
+    if (-not $hasDatadog) {
+        Write-Host "  datadog_api_key = \"sua-api-key-do-datadog\"" -ForegroundColor Cyan
+    }
+    if (-not $hasNewRelic) {
+        Write-Host "  newrelic_license_key = \"sua-license-key-do-newrelic\"" -ForegroundColor Cyan
+    }
+    Write-Host ""
+    Write-Host "O deploy continuara, mas o OTEL Collector pode nao funcionar corretamente." -ForegroundColor Yellow
+} else {
+    Write-Success "OpenTelemetry configurado (Datadog + New Relic)"
+}
+
 # ============================================
 # MODO DESTROY
 # ============================================
@@ -299,7 +321,18 @@ if (-not $SkipBuild) {
     
     # Atualizar tag no tfvars
     Write-Step "Atualizando tag no terraform.tfvars..."
-    (Get-Content "terraform.tfvars") -replace 'docker_image_tag\s*=\s*"[^"]*"', "docker_image_tag  = `"$IMAGE_TAG`"" | Set-Content "terraform.tfvars"
+    $tfvarsPath = "terraform.tfvars"
+    $tfvarsContent = Get-Content $tfvarsPath -Raw
+    
+    if ($tfvarsContent -match 'docker_image_tag\s*=') {
+        # Substituir tag existente
+        $tfvarsContent = $tfvarsContent -replace 'docker_image_tag\s*=\s*"[^"]*"', "docker_image_tag  = `"$IMAGE_TAG`""
+    } else {
+        # Adicionar tag após docker_image_repo
+        $tfvarsContent = $tfvarsContent -replace '(docker_image_repo\s*=\s*"[^"]*")', "`$1`ndocker_image_tag  = `"$IMAGE_TAG`""
+    }
+    
+    Set-Content $tfvarsPath $tfvarsContent
     Write-Success "Tag atualizada para: $IMAGE_TAG"
 }
 
@@ -362,14 +395,36 @@ Write-Title "ETAPA 9: Verificando Deploy"
 Write-Step "Aguardando pods iniciarem (30 segundos)..."
 Start-Sleep -Seconds 30
 
-Write-Step "Status dos Pods:"
+Write-Step "Status dos Pods (mecanicaos):"
 kubectl get pods -n mecanicaos
 
-Write-Step "Status dos Services:"
+Write-Step "Status dos Services (mecanicaos):"
 kubectl get svc -n mecanicaos
 
 Write-Step "Obtendo URL do LoadBalancer..."
 $LB_URL = kubectl get svc mecanicaos-service -n mecanicaos -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>$null
+
+# ============================================
+# ETAPA 10: Verificar OpenTelemetry Collector
+# ============================================
+
+Write-Title "ETAPA 10: Verificando OpenTelemetry Collector"
+
+Write-Step "Status dos Pods (observability):"
+kubectl get pods -n observability
+
+Write-Step "Status dos Services (observability):"
+kubectl get svc -n observability
+
+# Verificar se o OTEL Collector está rodando
+$otelPodStatus = kubectl get pods -n observability -l app=otel-collector -o jsonpath='{.items[0].status.phase}' 2>$null
+if ($otelPodStatus -eq "Running") {
+    Write-Success "OpenTelemetry Collector esta rodando!"
+    Write-Info "Exportando traces para Datadog e New Relic"
+} else {
+    Write-Warning "OpenTelemetry Collector ainda nao esta pronto"
+    Write-Info "Verifique com: kubectl logs -n observability -l app=otel-collector"
+}
 
 # ============================================
 # RESUMO FINAL
@@ -392,10 +447,24 @@ if ($LB_URL) {
 }
 
 Write-Host ""
+Write-Host "OBSERVABILIDADE (OpenTelemetry):" -ForegroundColor Green
+Write-Host "================================" -ForegroundColor Green
+Write-Host "OTEL Collector: " -NoNewline -ForegroundColor Yellow
+Write-Host "otel-collector.observability:4317 (gRPC) / :4318 (HTTP)" -ForegroundColor Cyan
+Write-Host "Exporters:      " -NoNewline -ForegroundColor Yellow
+Write-Host "Datadog + New Relic" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Dashboards:" -ForegroundColor Yellow
+Write-Host "  Datadog:    https://app.datadoghq.com/apm/traces" -ForegroundColor White
+Write-Host "  New Relic:  https://one.newrelic.com/distributed-tracing" -ForegroundColor White
+
+Write-Host ""
 Write-Host "COMANDOS UTEIS:" -ForegroundColor Green
 Write-Host "===============" -ForegroundColor Green
-Write-Host "Ver pods:        kubectl get pods -n mecanicaos" -ForegroundColor White
-Write-Host "Ver logs:        kubectl logs -n mecanicaos -l app=mecanicaos-api" -ForegroundColor White
-Write-Host "Ver services:    kubectl get svc -n mecanicaos" -ForegroundColor White
-Write-Host "Destruir tudo:   .\deploy-completo.ps1 -Destroy" -ForegroundColor White
+Write-Host "Ver pods API:         kubectl get pods -n mecanicaos" -ForegroundColor White
+Write-Host "Ver logs API:         kubectl logs -n mecanicaos -l app=mecanicaos-api" -ForegroundColor White
+Write-Host "Ver pods OTEL:        kubectl get pods -n observability" -ForegroundColor White
+Write-Host "Ver logs OTEL:        kubectl logs -n observability -l app=otel-collector" -ForegroundColor White
+Write-Host "Ver services:         kubectl get svc -A" -ForegroundColor White
+Write-Host "Destruir tudo:        .\deploy-completo.ps1 -Destroy" -ForegroundColor White
 Write-Host ""

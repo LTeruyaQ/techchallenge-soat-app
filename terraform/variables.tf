@@ -111,9 +111,9 @@ variable "docker_image_repo" {
 }
 
 variable "docker_image_tag" {
-  description = "Tag da imagem Docker no ECR"
+  description = "Tag da imagem Docker no ECR. Se vazio, usa timestamp automático."
   type        = string
-  default     = "latest"
+  default     = ""
 }
 
 # ============================================
