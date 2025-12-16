@@ -17,6 +17,8 @@
 # - DB_USERNAME (ex: postgres.PROJECT_REF)
 # - DB_PASSWORD
 # - JWT_SECRET_KEY
+# - DATADOG_API_KEY (para OpenTelemetry)
+# - NEWRELIC_LICENSE_KEY (para OpenTelemetry)
 #
 # ============================================
 
@@ -185,6 +187,12 @@ jobs:
           jwt_issuer         = "MecanicaOS"
           jwt_audience       = "MecanicaOS-API"
           jwt_expiry_minutes = 120
+
+          # OpenTelemetry
+          otel_service_name           = "mecanicaos-api"
+          otel_exporter_otlp_endpoint = "http://otel-collector.observability:4317"
+          datadog_api_key             = "${{ secrets.DATADOG_API_KEY }}"
+          newrelic_license_key        = "${{ secrets.NEWRELIC_LICENSE_KEY }}"
           EOF
           
           echo "terraform.tfvars criado com sucesso!"
@@ -267,3 +275,18 @@ jobs:
           echo ""
           echo "Swagger UI: http://${LB_URL}/docs"
           echo "ReDoc: http://${LB_URL}/api-docs"
+
+      - name: Verificar OpenTelemetry Collector
+        run: |
+          echo "### OpenTelemetry Collector" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n observability >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Namespace observability não existe"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          
+          OTEL_STATUS=$(kubectl get pods -n observability -l app=otel-collector -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NotFound")
+          if [ "$OTEL_STATUS" == "Running" ]; then
+            echo "✅ OTEL Collector está rodando" >> $GITHUB_STEP_SUMMARY
+            echo "**Exporters:** Datadog + New Relic" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ OTEL Collector não está pronto (status: $OTEL_STATUS)" >> $GITHUB_STEP_SUMMARY
+          fi
