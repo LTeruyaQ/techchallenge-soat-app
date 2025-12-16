@@ -5,29 +5,13 @@ data "aws_subnets" "default" {
   }
 }
 
-resource "aws_iam_role" "eks_cluster" {
-  name = "${var.cluster_name}-cluster-role"
-
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = {
-        Service = "eks.amazonaws.com"
-      }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "eks_cluster_policy" {
-  role       = aws_iam_role.eks_cluster.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+data "external" "eks_cluster_role" {
+  program = ["bash", "-c", "ROLE_ARN=$(aws iam list-roles --query 'Roles[?contains(RoleName, `LabEksClusterRole`)].Arn' --output text | head -n 1) && printf '{\"arn\": \"%s\"}' \"$ROLE_ARN\""]
 }
 
 resource "aws_eks_cluster" "demo" {
   name     = var.cluster_name
-  role_arn = aws_iam_role.eks_cluster.arn
+  role_arn = data.external.eks_cluster_role.result.arn
 
   vpc_config {
     subnet_ids = data.aws_subnets.default.ids
