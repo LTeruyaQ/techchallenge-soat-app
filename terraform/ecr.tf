@@ -14,4 +14,9 @@ resource "aws_ecr_repository" "app" {
     Project = var.project_name
     Env     = var.environment
   }
+
+  lifecycle {
+    # Ignora se o repositório já existir (evita erro de conflito)
+    ignore_changes = [name]
+  }
 }

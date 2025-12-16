@@ -252,31 +252,28 @@ if ($Plan) {
 }
 
 # ============================================
-# ETAPA 4: Criar/Verificar ECR
+# ETAPA 4: Criar ECR via Terraform
 # ============================================
 
 if (-not $SkipBuild) {
-    Write-Title "ETAPA 4: Configurando ECR"
+    Write-Title "ETAPA 4: Criando Repositorio ECR"
     
-    Write-Step "Verificando repositorio ECR..."
+    Write-Step "Inicializando Terraform..."
+    terraform init
     
-    # Temporariamente desabilitar erro para verificar se ECR existe
-    $ErrorActionPreference = "Continue"
-    $ecrCheck = aws ecr describe-repositories --repository-names $ECR_REPO_NAME 2>&1
-    $ecrExitCode = $LASTEXITCODE
-    $ErrorActionPreference = "Stop"
-    
-    if ($ecrExitCode -ne 0) {
-        Write-Info "Repositorio nao existe. Criando..."
-        aws ecr create-repository --repository-name $ECR_REPO_NAME --image-scanning-configuration scanOnPush=true
-        if ($LASTEXITCODE -ne 0) {
-            Write-Error "Falha ao criar repositorio ECR!"
-            exit 1
-        }
-        Write-Success "Repositorio ECR criado: $ECR_REPO_NAME"
-    } else {
-        Write-Success "Repositorio ECR ja existe: $ECR_REPO_NAME"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Falha ao inicializar Terraform!"
+        exit 1
     }
+    
+    Write-Step "Criando repositorio ECR..."
+    terraform apply "-target=aws_ecr_repository.app" -auto-approve
+    
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "Falha ao criar repositorio ECR!"
+        exit 1
+    }
+    Write-Success "Repositorio ECR criado!"
     
     # ============================================
     # ETAPA 5: Build Docker
@@ -337,7 +334,7 @@ if (-not $SkipBuild) {
 }
 
 # ============================================
-# ETAPA 7: Deploy Terraform
+# ETAPA 7: Deploy Terraform (Infraestrutura completa)
 # ============================================
 
 if (-not $SkipInfra) {

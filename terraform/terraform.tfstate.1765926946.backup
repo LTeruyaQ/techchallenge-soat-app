@@ -1,14 +1,9 @@
 {
   "version": 4,
   "terraform_version": "1.14.1",
-  "serial": 328,
+  "serial": 325,
   "lineage": "d8cb3ada-861b-2de1-7960-072b92b38d3b",
-  "outputs": {
-    "ecr_repository_url": {
-      "value": "339713065339.dkr.ecr.us-east-1.amazonaws.com/mecanicaos-ecr",
-      "type": "string"
-    }
-  },
+  "outputs": {},
   "resources": [
     {
       "mode": "managed",
@@ -26,7 +21,7 @@
                 "kms_key": ""
               }
             ],
-            "force_delete": true,
+            "force_delete": null,
             "id": "mecanicaos-ecr",
             "image_scanning_configuration": [
               {
@@ -39,14 +34,8 @@
             "region": "us-east-1",
             "registry_id": "339713065339",
             "repository_url": "339713065339.dkr.ecr.us-east-1.amazonaws.com/mecanicaos-ecr",
-            "tags": {
-              "Env": "production",
-              "Project": "mecanicaos"
-            },
-            "tags_all": {
-              "Env": "production",
-              "Project": "mecanicaos"
-            },
+            "tags": {},
+            "tags_all": {},
             "timeouts": null
           },
           "sensitive_attributes": [],
@@ -56,7 +45,7 @@
             "name": "mecanicaos-ecr",
             "region": "us-east-1"
           },
-          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxMjAwMDAwMDAwMDAwfX0="
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxMjAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIwIn0="
         }
       ]
     }
