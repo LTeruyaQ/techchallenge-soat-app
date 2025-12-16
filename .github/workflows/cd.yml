@@ -174,10 +174,16 @@ jobs:
           echo "ReDoc: http://${LB_URL}/api-docs"
           
           echo ""
+          echo "📡 OpenTelemetry Collector:"
+          kubectl get pods -n observability 2>/dev/null || echo "Namespace observability não existe"
+          
+          echo ""
           echo "## Deploy Summary" >> $GITHUB_STEP_SUMMARY
           echo "- **Image Tag:** ${{ needs.build-and-push.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Swagger UI:** http://${LB_URL}/docs" >> $GITHUB_STEP_SUMMARY
           echo "- **ReDoc:** http://${LB_URL}/api-docs" >> $GITHUB_STEP_SUMMARY
+          echo "- **OTEL Collector:** otel-collector.observability:4317" >> $GITHUB_STEP_SUMMARY
+          echo "- **Exporters:** Datadog + New Relic" >> $GITHUB_STEP_SUMMARY
 
       - name: Deploy pulado (credenciais inválidas)
         if: steps.check-aws.outputs.aws_valid != 'true'
