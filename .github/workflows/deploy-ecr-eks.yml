@@ -278,15 +278,20 @@ jobs:
 
       - name: Verificar OpenTelemetry Collector
         run: |
-          echo "### OpenTelemetry Collector" >> $GITHUB_STEP_SUMMARY
+          echo "### OpenTelemetry Collector (DaemonSet)" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          kubectl get pods -n observability >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Namespace observability não existe"
+          kubectl get daemonset -n observability >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Namespace observability não existe"
+          kubectl get pods -n observability -l app=otel-collector -o wide >> $GITHUB_STEP_SUMMARY 2>&1
           echo '```' >> $GITHUB_STEP_SUMMARY
           
-          OTEL_STATUS=$(kubectl get pods -n observability -l app=otel-collector -o jsonpath='{.items[0].status.phase}' 2>/dev/null || echo "NotFound")
-          if [ "$OTEL_STATUS" == "Running" ]; then
-            echo "✅ OTEL Collector está rodando" >> $GITHUB_STEP_SUMMARY
+          # Verificar quantos pods do DaemonSet estão prontos
+          DESIRED=$(kubectl get daemonset otel-collector -n observability -o jsonpath='{.status.desiredNumberScheduled}' 2>/dev/null || echo "0")
+          READY=$(kubectl get daemonset otel-collector -n observability -o jsonpath='{.status.numberReady}' 2>/dev/null || echo "0")
+          
+          if [ "$READY" == "$DESIRED" ] && [ "$DESIRED" != "0" ]; then
+            echo "✅ OTEL Collector DaemonSet: $READY/$DESIRED pods rodando" >> $GITHUB_STEP_SUMMARY
+            echo "**Pipelines:** traces, metrics, logs" >> $GITHUB_STEP_SUMMARY
             echo "**Exporters:** Datadog + New Relic" >> $GITHUB_STEP_SUMMARY
           else
-            echo "⚠️ OTEL Collector não está pronto (status: $OTEL_STATUS)" >> $GITHUB_STEP_SUMMARY
+            echo "⚠️ OTEL Collector não está pronto ($READY/$DESIRED pods)" >> $GITHUB_STEP_SUMMARY
           fi

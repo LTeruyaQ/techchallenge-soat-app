@@ -13,6 +13,21 @@ data:
           http:
             endpoint: 0.0.0.0:4318
 
+      # Filelog receiver para coletar logs de containers Kubernetes
+      filelog:
+        include:
+          - /var/log/pods/*/*/*.log
+        exclude:
+          # Excluir logs do próprio collector para evitar loop
+          - /var/log/pods/*/otel-collector/*.log
+        start_at: end
+        include_file_path: true
+        include_file_name: false
+        operators:
+          # Parser de logs de container (detecta formato automaticamente)
+          - type: container
+            id: container-parser
+
     processors:
       batch:
         timeout: 10s
@@ -37,10 +52,13 @@ data:
           span_name_as_resource_name: true
         metrics:
           resource_attributes_as_tags: true
+        logs:
+          # Habilitar envio de logs para Datadog
+          dump_payloads: false
 
       # New Relic via OTLP (US region)
       otlphttp/newrelic:
-        endpoint: https://otlp.nr-data.net
+        endpoint: https://otlp.nr-data.net:4318
         headers:
           api-key: $${NR_LICENSE_KEY}
 
@@ -57,5 +75,9 @@ data:
           exporters: [datadog, otlphttp/newrelic]
         metrics:
           receivers: [otlp]
+          processors: [memory_limiter, batch, resource]
+          exporters: [datadog, otlphttp/newrelic]
+        logs:
+          receivers: [filelog]
           processors: [memory_limiter, batch, resource]
           exporters: [datadog, otlphttp/newrelic]
