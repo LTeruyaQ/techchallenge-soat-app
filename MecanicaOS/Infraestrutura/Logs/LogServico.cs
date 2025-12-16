@@ -1,6 +1,7 @@
 ﻿using Core.Interfaces.Servicos;
 using Infraestrutura.Logs.DTOs;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -58,6 +59,7 @@ namespace Infraestrutura.Logs
             object? dados,
             Exception? exception = null)
         {
+            var activity = Activity.Current;
             var entry = new LogEntryDto
             {
                 Nivel = nivel.ToString(),
@@ -65,6 +67,8 @@ namespace Infraestrutura.Logs
                 Metodo = metodo,
                 Etapa = etapa,
                 CorrelationId = _correlationIdService.GetCorrelationId(),
+                TraceId = activity?.TraceId.ToString(),
+                SpanId = activity?.SpanId.ToString(),
                 Dados = dados,
                 Timestamp = DateTime.UtcNow,
                 Usuario = _usuarioLogadoServico.Nome

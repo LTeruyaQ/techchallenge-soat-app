@@ -1,68 +1,116 @@
-# Terraform para MecanicaOS na AWS EKS
+# Terraform para MecanicaOS - AWS Academy
 
-Este diretório contém a configuração do Terraform para implantar a aplicação MecanicaOS no Amazon EKS (Elastic Kubernetes Service) e expô-la através de um API Gateway.
+Este diretório contém a configuração do Terraform para implantar a aplicação MecanicaOS no Amazon EKS usando **AWS Academy**.
+
+## ⚠️ Limitações do AWS Academy
+
+- **NÃO pode criar IAM Roles/Policies** - Usa roles pré-existentes
+- **Credenciais expiram a cada 4 horas** - Atualize antes de executar
+- **Usa LabRole, LabEksClusterRole e LabEksNodeRole**
 
 ## Pré-requisitos
 
-Antes de começar, garanta que você tenha as seguintes ferramentas instaladas e configuradas:
-
-- [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli) (versão >= 1.5.0)
-- [AWS CLI](https://aws.amazon.com/cli/) (configurado com suas credenciais da AWS)
-- [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) (para interagir com o cluster, se necessário)
+- [Terraform](https://www.terraform.io/downloads) >= 1.5.0
+- [AWS CLI](https://aws.amazon.com/cli/) configurado
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
 
 ## Configuração
 
-Você precisa fornecer valores para algumas variáveis antes de executar a configuração. A maneira recomendada é criar um arquivo chamado `terraform.tfvars` dentro deste diretório.
+### 1. Copiar arquivo de variáveis
 
-1.  **Imagem Docker:**
-    Altere o valor da variável `docker_image`. Certifique-se de que a imagem esteja publicada em um registro de contêiner acessível (como Docker Hub ou Amazon ECR).
+```powershell
+cp terraform.tfvars.example terraform.tfvars
+```
 
-2.  **Credenciais do Supabase:**
-    Forneça a URL e a chave (key) do seu projeto Supabase.
+### 2. Obter nomes das roles do AWS Academy
 
-**Exemplo de arquivo `terraform.tfvars`:**
+1. Acesse o **Console AWS**
+2. Vá em **IAM > Roles**
+3. Procure por **"LabEksClusterRole"** e **"LabEksNodeRole"**
+4. Copie os nomes completos (incluindo o prefixo)
+
+### 3. Preencher terraform.tfvars
 
 ```hcl
-# terraform.tfvars
+# Roles do AWS Academy (OBRIGATÓRIO)
+eks_cluster_role_name = "c175509a...-LabEksClusterRole-..."
+eks_node_role_name    = "c175509a...-LabEksNodeRole-..."
 
-docker_image = "seu-usuario-docker/mecanicaos-api:latest"
-supabase_url = "https://<id-do-seu-projeto>.supabase.co"
-supabase_key = "<sua-chave-anon-supabase>"
+# Banco de dados Supabase
+db_host     = "aws-0-sa-east-1.pooler.supabase.com"
+db_password = "SUA_SENHA"
+
+# JWT
+jwt_secret_key = "sua_chave_secreta"
 ```
 
-> **⚠️ Aviso de Segurança:** A variável `supabase_key` está marcada como `sensitive`, mas ainda será armazenada em texto plano no arquivo de estado do Terraform (`terraform.tfstate`). Para ambientes de produção, é altamente recomendável usar um [backend remoto seguro](https://www.terraform.io/language/settings/backends/s3) para proteger seus segredos.
+## Deploy
 
-## Como Implantar
+### Usando script (recomendado)
 
-1.  **Inicializar o Terraform:**
-    Navegue até este diretório (`terraform/`) e execute:
-    ```sh
-    terraform init
-    ```
+```powershell
+# Deploy completo
+.\deploy.ps1
 
-2.  **Planejar a Implantação:**
-    Revise os recursos que o Terraform criará:
-    ```sh
-    terraform plan
-    ```
+# Apenas plan
+.\deploy.ps1 -Plan
 
-3.  **Aplicar a Configuração:**
-    Implante a infraestrutura na AWS:
-    ```sh
-    terraform apply
-    ```
-    Você será solicitado a confirmar a ação. Digite `yes` para prosseguir.
+# Destruir
+.\deploy.ps1 -Destroy
+```
 
-## Saídas (Outputs)
+### Manual
 
-Após a implantação bem-sucedida, o Terraform exibirá a URL pública do seu API Gateway:
+```powershell
+terraform init
+terraform plan
+terraform apply
+```
 
--   `api_gateway_url`: O endpoint que você pode usar para acessar sua aplicação.
+## Estrutura de Arquivos
 
-## Como Destruir
+```
+terraform/
+├── providers.tf          # Providers AWS, Kubernetes, Kubectl
+├── variables.tf          # Variáveis
+├── locals.tf             # Valores calculados
+├── iam-roles.tf          # Data sources das roles AWS Academy
+├── vpc.tf                # VPC
+├── subnets.tf            # Subnets públicas
+├── internet-gateway.tf   # Internet Gateway
+├── route-tables.tf       # Route Tables
+├── security-groups.tf    # Security Groups
+├── eks-cluster.tf        # Cluster EKS
+├── eks-nodegroup.tf      # Node Group
+├── eks-access.tf         # Access Entry e Policy
+├── k8s-namespace.tf      # Namespace Kubernetes
+├── k8s-deployment.tf     # Deployment da API
+├── k8s-service.tf        # Service LoadBalancer
+├── outputs.tf            # Outputs
+└── data.tf               # Data sources
+```
 
-Para remover todos os recursos criados por esta configuração, execute:
+## Outputs
 
-```sh
+Após o deploy:
+
+```powershell
+# Ver todos os outputs
+terraform output
+
+# Configurar kubectl
+aws eks update-kubeconfig --region us-east-1 --name eks-mecanicaos
+```
+
+## Verificar Deploy
+
+```powershell
+kubectl get pods -n mecanicaos
+kubectl get svc -n mecanicaos
+kubectl logs -n mecanicaos -l app=mecanicaos-api
+```
+
+## Destruir
+
+```powershell
 terraform destroy
-```

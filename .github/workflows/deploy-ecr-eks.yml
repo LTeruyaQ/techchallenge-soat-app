@@ -1,0 +1,269 @@
+# ============================================
+# Deploy Completo: Build + ECR + EKS
+# ============================================
+#
+# Este workflow faz o deploy completo do MecanicaOS:
+# 1. Build da imagem Docker
+# 2. Push para AWS ECR
+# 3. Deploy no EKS via Terraform
+#
+# SECRETS NECESSÁRIOS NO GITHUB:
+# - AWS_ACCESS_KEY_ID
+# - AWS_SECRET_ACCESS_KEY
+# - AWS_SESSION_TOKEN (obrigatório para AWS Academy)
+# - EKS_CLUSTER_ROLE_NAME (nome completo da LabEksClusterRole)
+# - EKS_NODE_ROLE_NAME (nome completo da LabEksNodeRole)
+# - DB_HOST (ex: aws-1-sa-east-1.pooler.supabase.com)
+# - DB_USERNAME (ex: postgres.PROJECT_REF)
+# - DB_PASSWORD
+# - JWT_SECRET_KEY
+#
+# ============================================
+
+name: Deploy ECR + EKS
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'Ação a executar'
+        required: true
+        default: 'deploy'
+        type: choice
+        options:
+          - deploy      # Build + Push ECR + Deploy EKS
+          - build-only  # Apenas Build + Push ECR
+          - infra-only  # Apenas Terraform (sem build)
+          - destroy     # Destruir tudo
+
+env:
+  AWS_REGION: 'us-east-1'
+  ECR_REPOSITORY: 'mecanicaos-ecr'
+  EKS_CLUSTER_NAME: 'eks-mecanicaos'
+
+jobs:
+  # ============================================
+  # Job 1: Build e Push para ECR
+  # ============================================
+  build-and-push-ecr:
+    name: 'Build & Push ECR'
+    runs-on: ubuntu-latest
+    if: github.event.inputs.action != 'infra-only' && github.event.inputs.action != 'destroy'
+    outputs:
+      image_tag: ${{ steps.build.outputs.image_tag }}
+      image_uri: ${{ steps.build.outputs.image_uri }}
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Verificar credenciais AWS
+        run: |
+          echo "Verificando credenciais AWS..."
+          aws sts get-caller-identity
+          echo "Credenciais válidas!"
+
+      - name: Login no Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Criar repositório ECR (se não existir)
+        run: |
+          aws ecr describe-repositories --repository-names ${{ env.ECR_REPOSITORY }} || \
+          aws ecr create-repository --repository-name ${{ env.ECR_REPOSITORY }} --image-scanning-configuration scanOnPush=true
+
+      - name: Build e Push para ECR
+        id: build
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          # Gerar tag com SHA do commit
+          IMAGE_TAG="${{ github.sha }}"
+          SHORT_SHA=$(echo ${{ github.sha }} | cut -c1-7)
+          IMAGE_URI="${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:${SHORT_SHA}"
+          IMAGE_URI_LATEST="${ECR_REGISTRY}/${{ env.ECR_REPOSITORY }}:latest"
+          
+          echo "Building image: ${IMAGE_URI}"
+          
+          # Build
+          docker build -t ${IMAGE_URI} -t ${IMAGE_URI_LATEST} .
+          
+          # Push
+          docker push ${IMAGE_URI}
+          docker push ${IMAGE_URI_LATEST}
+          
+          echo "Image pushed successfully!"
+          echo "image_tag=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "image_uri=${IMAGE_URI}" >> $GITHUB_OUTPUT
+
+      - name: Resumo do Build
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image Tag:** ${{ steps.build.outputs.image_tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image URI:** ${{ steps.build.outputs.image_uri }}" >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # Job 2: Deploy Infraestrutura com Terraform
+  # ============================================
+  deploy-infrastructure:
+    name: 'Deploy Infrastructure'
+    runs-on: ubuntu-latest
+    needs: [build-and-push-ecr]
+    if: |
+      always() && 
+      (github.event.inputs.action == 'deploy' || 
+       github.event.inputs.action == 'infra-only' || 
+       github.event.inputs.action == 'destroy')
+
+    defaults:
+      run:
+        working-directory: ./terraform
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.5.0'
+
+      - name: Criar terraform.tfvars
+        run: |
+          # Determinar a tag da imagem
+          if [ "${{ github.event.inputs.action }}" == "infra-only" ]; then
+            IMAGE_TAG="latest"
+          else
+            IMAGE_TAG="${{ needs.build-and-push-ecr.outputs.image_tag }}"
+            if [ -z "$IMAGE_TAG" ]; then
+              IMAGE_TAG="latest"
+            fi
+          fi
+          
+          cat > terraform.tfvars << EOF
+          # Configurações Gerais
+          aws_region   = "${{ env.AWS_REGION }}"
+          project_name = "mecanicaos"
+          environment  = "production"
+
+          # IAM Roles do AWS Academy
+          eks_cluster_role_name = "${{ secrets.EKS_CLUSTER_ROLE_NAME }}"
+          eks_node_role_name    = "${{ secrets.EKS_NODE_ROLE_NAME }}"
+
+          # ECR
+          docker_image_repo = "${{ env.ECR_REPOSITORY }}"
+          docker_image_tag  = "${IMAGE_TAG}"
+
+          # Kubernetes
+          replicas = 2
+
+          # Banco de dados (Supabase)
+          db_host     = "${{ secrets.DB_HOST }}"
+          db_port     = "5432"
+          db_name     = "postgres"
+          db_username = "${{ secrets.DB_USERNAME }}"
+          db_password = "${{ secrets.DB_PASSWORD }}"
+
+          # JWT
+          jwt_secret_key     = "${{ secrets.JWT_SECRET_KEY }}"
+          jwt_issuer         = "MecanicaOS"
+          jwt_audience       = "MecanicaOS-API"
+          jwt_expiry_minutes = 120
+          EOF
+          
+          echo "terraform.tfvars criado com sucesso!"
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        if: github.event.inputs.action != 'destroy'
+        run: terraform plan -out=tfplan
+
+      - name: Terraform Apply
+        if: github.event.inputs.action == 'deploy' || github.event.inputs.action == 'infra-only'
+        run: terraform apply -auto-approve tfplan
+
+      - name: Terraform Destroy
+        if: github.event.inputs.action == 'destroy'
+        run: terraform destroy -auto-approve
+
+      - name: Mostrar Outputs
+        if: github.event.inputs.action != 'destroy'
+        run: |
+          echo "## Terraform Outputs" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          terraform output >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ============================================
+  # Job 3: Verificar Deploy
+  # ============================================
+  verify-deployment:
+    name: 'Verify Deployment'
+    runs-on: ubuntu-latest
+    needs: [deploy-infrastructure]
+    if: github.event.inputs.action == 'deploy' || github.event.inputs.action == 'infra-only'
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Configurar kubectl
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Verificar pods
+        run: |
+          echo "Aguardando pods ficarem prontos..."
+          sleep 30
+          
+          echo "## Kubernetes Status" >> $GITHUB_STEP_SUMMARY
+          echo "### Pods" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get pods -n mecanicaos >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Namespace ainda não existe"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Services" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          kubectl get svc -n mecanicaos >> $GITHUB_STEP_SUMMARY 2>&1 || echo "Namespace ainda não existe"
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Obter URL do LoadBalancer
+        run: |
+          echo "Obtendo URL do LoadBalancer..."
+          LB_URL=$(kubectl get svc mecanicaos-service -n mecanicaos -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "Aguardando...")
+          
+          echo "## API URL" >> $GITHUB_STEP_SUMMARY
+          echo "**Swagger UI:** http://${LB_URL}/docs" >> $GITHUB_STEP_SUMMARY
+          echo "**ReDoc:** http://${LB_URL}/api-docs" >> $GITHUB_STEP_SUMMARY
+          echo ""
+          echo "Swagger UI: http://${LB_URL}/docs"
+          echo "ReDoc: http://${LB_URL}/api-docs"
