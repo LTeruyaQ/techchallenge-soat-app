@@ -41,26 +41,6 @@ variable "availability_zones" {
 }
 
 # ============================================
-# Variáveis IAM - AWS Academy
-# ============================================
-#
-# IMPORTANTE: Copie os nomes exatos das roles do seu AWS Academy Lab
-# Você encontra em: IAM > Roles > Procure por "LabEks"
-#
-
-variable "eks_cluster_role_name" {
-  description = "Nome da LabEksClusterRole do AWS Academy (copie do console AWS)"
-  type        = string
-  # Exemplo: "c175509a4540172l11442646t1w891377-LabEksClusterRole-QQH0SV203Gtw"
-}
-
-variable "eks_node_role_name" {
-  description = "Nome da LabEksNodeRole do AWS Academy (copie do console AWS)"
-  type        = string
-  # Exemplo: "c175509a4540172l11442646t1w891377135-LabEksNodeRole-r3HYcSAYWMXX"
-}
-
-# ============================================
 # Variáveis do EKS
 # ============================================
 
