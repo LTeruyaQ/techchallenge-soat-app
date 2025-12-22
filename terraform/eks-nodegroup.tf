@@ -9,11 +9,25 @@ resource "aws_eks_node_group" "nodes" {
   # Utiliza a role ARN determinada pela lógica em locals.tf.
   node_role_arn = local.eks_node_role_arn
 
-  # Validação: Garante que o apply falhe se a role do Academy não for encontrada.
+  # Validações de Ciclo de Vida:
+  # Garante que as premissas para a criação do Node Group sejam atendidas.
   lifecycle {
+    # 1. Valida se a role do AWS Academy foi encontrada.
     precondition {
       condition     = local.error_message_node_role == ""
       error_message = local.error_message_node_role
+    }
+
+    # 2. Valida se a policy 'AmazonEKSWorkerNodePolicy' está anexada.
+    precondition {
+      condition     = data.aws_iam_role_policy_attachment.node_policy_check.policy_arn != null
+      error_message = "ERRO: A role dos nos (${local.eks_node_role_arn}) nao tem a policy 'AmazonEKSWorkerNodePolicy' anexada. Essencial para o no se registrar no cluster."
+    }
+
+    # 3. Valida se a policy 'AmazonEC2ContainerRegistryReadOnly' está anexada.
+    precondition {
+      condition     = data.aws_iam_role_policy_attachment.ecr_policy_check.policy_arn != null
+      error_message = "ERRO: A role dos nos (${local.eks_node_role_arn}) nao tem a policy 'AmazonEC2ContainerRegistryReadOnly' anexada. Essencial para baixar a imagem Docker do ECR."
     }
   }
 

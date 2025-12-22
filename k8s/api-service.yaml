@@ -5,6 +5,13 @@ metadata:
   namespace: mecanicaos
   labels:
     app: mecanicaos-api
+  annotations:
+    # Anotacoes especificas da AWS para o Load Balancer Controller
+    # Garante que o Health Check do ELB use a rota /health da aplicacao.
+    # https://kubernetes-sigs.github.io/aws-load-balancer-controller/latest/guide/service/annotations/#healthcheck
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/health"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "80"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "HTTP"
 spec:
   selector:
     app: mecanicaos-api

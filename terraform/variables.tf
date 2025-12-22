@@ -83,6 +83,12 @@ variable "eks_node_role_name" {
 # Variáveis do EKS
 # ============================================
 
+variable "eks_cluster_version" {
+  description = "Versao do Kubernetes para o cluster EKS. O AWS Academy pode exigir versoes especificas."
+  type        = string
+  default     = "1.31"
+}
+
 variable "instance_types" {
   description = "Tipos de instância EC2 para os nodes"
   type        = list(string)

@@ -49,18 +49,40 @@ data "aws_eks_cluster_auth" "auth" {
 # Obtém o Account ID da conta AWS atual.
 data "aws_caller_identity" "current" {}
 
-# --- Validação de Roles (Conta Normal) ---
+# --- Validação de Roles (Apenas para Contas Normais) ---
 
-# Valida se a role do cluster fornecida manualmente existe.
+# Valida se a role do cluster, fornecida manualmente via variável, existe na conta.
+# O Terraform falhará durante o 'plan' se o data source não encontrar a role.
 data "aws_iam_role" "eks_cluster_role_validation" {
-  # Executa apenas se não for Academy e um nome de role for fornecido.
+  # Esta validação só é executada se NÃO estivermos no Academy e uma role for especificada.
   count = !local.is_academy && var.eks_cluster_role_name != "" ? 1 : 0
   name  = var.eks_cluster_role_name
-
 }
 
 # Valida se a role dos nós fornecida manualmente existe.
 data "aws_iam_role" "eks_node_role_validation" {
   count = !local.is_academy && var.eks_node_role_name != "" ? 1 : 0
   name  = var.eks_node_role_name
+}
+
+# --- Validação de Policies Anexadas ---
+
+# Verifica se a policy 'AmazonEKSClusterPolicy' está anexada à role do cluster.
+data "aws_iam_role_policy_attachment" "cluster_policy_check" {
+  # O nome da role é determinado dinamicamente (Academy vs. Normal).
+  role_name = trimprefix(local.eks_cluster_role_arn, "arn:aws:iam::${local.account_id}:role/")
+  # ARN da policy gerenciada pela AWS.
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+}
+
+# Verifica se a policy 'AmazonEKSWorkerNodePolicy' está anexada à role dos nós.
+data "aws_iam_role_policy_attachment" "node_policy_check" {
+  role_name  = trimprefix(local.eks_node_role_arn, "arn:aws:iam::${local.account_id}:role/")
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
+}
+
+# Verifica se a policy 'AmazonEC2ContainerRegistryReadOnly' está anexada à role dos nós.
+data "aws_iam_role_policy_attachment" "ecr_policy_check" {
+  role_name  = trimprefix(local.eks_node_role_arn, "arn:aws:iam::${local.account_id}:role/")
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }
