@@ -384,43 +384,83 @@ aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
 Write-Success "kubectl configurado!"
 
 # ============================================
-# ETAPA 9: Verificar Deploy
+# ETAPA 9: Verificar Deploy e Aguardar Load Balancer
 # ============================================
 
 Write-Title "ETAPA 9: Verificando Deploy"
 
-Write-Step "Aguardando pods iniciarem (30 segundos)..."
-Start-Sleep -Seconds 30
+Write-Step "Aguardando Load Balancer ficar pronto..."
+$LB_URL = $null
+$maxRetries = 60 # 60 tentativas * 10s = 10 minutos
+$retryCount = 0
 
-Write-Step "Status dos Pods (mecanicaos):"
+while ($retryCount -lt $maxRetries) {
+    $LB_URL = kubectl get svc mecanicaos-service -n mecanicaos -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>$null
+    if ($LB_URL) {
+        Write-Success "Load Balancer esta pronto!"
+        Write-Info "URL: $LB_URL"
+        break
+    } else {
+        $retryCount++
+        $timeLeft = ($maxRetries - $retryCount) * 10
+        Write-Host "Tentativa $retryCount de $maxRetries... Aguardando 10s. (Tempo restante estimado: $($timeLeft)s)" -ForegroundColor Gray
+        Start-Sleep -Seconds 10
+    }
+}
+
+if (-not $LB_URL) {
+    Write-Error "Timeout! O Load Balancer nao ficou pronto em 10 minutos."
+    Write-Info "Verifique o status do servico com: kubectl get svc mecanicaos-service -n mecanicaos -o yaml"
+    # O script continua para mostrar outras informações úteis.
+}
+
+Write-Step "Status final dos Pods (mecanicaos):"
 kubectl get pods -n mecanicaos
 
-Write-Step "Status dos Services (mecanicaos):"
-kubectl get svc -n mecanicaos
-
-Write-Step "Obtendo URL do LoadBalancer..."
-$LB_URL = kubectl get svc mecanicaos-service -n mecanicaos -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>$null
-
 # ============================================
-# ETAPA 10: Verificar OpenTelemetry Collector
+# ETAPA 10: Logs e Diagnóstico Automático
 # ============================================
 
-Write-Title "ETAPA 10: Verificando OpenTelemetry Collector"
+Write-Title "ETAPA 10: Logs e Diagnostico"
 
-Write-Step "Status dos Pods (observability):"
-kubectl get pods -n observability
+Write-Step "Buscando logs da aplicacao..."
+try {
+    # Tenta buscar os logs dos pods com o label app=mecanicaos-api
+    $appLogs = kubectl logs -n mecanicaos -l app=mecanicaos-api --tail=50
+    Write-Host "--- Ultimos 50 logs da API ---" -ForegroundColor Gray
+    Write-Host $appLogs
+    Write-Host "-----------------------------" -ForegroundColor Gray
+    Write-Success "Logs da aplicacao obtidos."
+} catch {
+    Write-Warning "Nao foi possivel obter os logs da aplicacao. Os pods podem estar iniciando."
+}
 
-Write-Step "Status dos Services (observability):"
-kubectl get svc -n observability
+# --- Diagnóstico do OpenTelemetry Collector ---
 
-# Verificar se o OTEL Collector está rodando
-$otelPodStatus = kubectl get pods -n observability -l app=otel-collector -o jsonpath='{.items[0].status.phase}' 2>$null
-if ($otelPodStatus -eq "Running") {
-    Write-Success "OpenTelemetry Collector esta rodando!"
-    Write-Info "Exportando traces para Datadog e New Relic"
+Write-Step "Diagnosticando OpenTelemetry Collector..."
+$otelPodName = kubectl get pods -n observability -l app=otel-collector -o jsonpath='{.items[0].metadata.name}' 2>$null
+
+if ($otelPodName) {
+    $otelPodStatus = kubectl get pod $otelPodName -n observability -o jsonpath='{.status.phase}' 2>$null
+    if ($otelPodStatus -eq "Running") {
+        Write-Success "Pod do OpenTelemetry Collector esta RUNNING."
+
+        # Verificar logs por falta de API keys
+        $otelLogs = kubectl logs $otelPodName -n observability 2>&1
+        if ($otelLogs -match "api_key not available" -or $otelLogs -match "license_key is required") {
+            Write-Warning "OTEL Collector esta rodando, mas falta uma API Key!"
+            Write-Info "Os dados de telemetria nao serao enviados para o Datadog ou New Relic."
+            Write-Info "Verifique se 'datadog_api_key' e 'newrelic_license_key' estao no seu terraform.tfvars."
+        } else {
+            Write-Success "Nenhum problema de API Key detectado nos logs do OTEL."
+        }
+    } else {
+        Write-Warning "O Pod do OpenTelemetry Collector esta no estado: $otelPodStatus."
+        Write-Info "O deploy continua, mas a observabilidade pode estar comprometida."
+    }
 } else {
-    Write-Warning "OpenTelemetry Collector ainda nao esta pronto"
-    Write-Info "Verifique com: kubectl logs -n observability -l app=otel-collector"
+    Write-Warning "Nao foi encontrado um pod para o OpenTelemetry Collector."
+    Write-Info "A observabilidade nao esta ativa."
 }
 
 # ============================================
@@ -430,38 +470,32 @@ if ($otelPodStatus -eq "Running") {
 Write-Title "DEPLOY CONCLUIDO!"
 
 Write-Host ""
+Write-Host "Para ver todas as informacoes novamente, execute:" -ForegroundColor Yellow
+Write-Host "  terraform output" -ForegroundColor Cyan
+Write-Host ""
+
+# Buscar os outputs do Terraform para exibir um resumo final
+$apiUrl = terraform output -raw api_url 2>$null
+$healthCheckCmd = terraform output -raw health_check_command 2>$null
+$accountType = terraform output -raw account_type 2>$null
+
 Write-Host "INFORMACOES DE ACESSO:" -ForegroundColor Green
 Write-Host "======================" -ForegroundColor Green
 Write-Host ""
-
-if ($LB_URL) {
-    Write-Host "API URL: " -NoNewline -ForegroundColor Yellow
-    Write-Host "http://$LB_URL/api/v1/docs" -ForegroundColor Cyan
-} else {
-    Write-Host "LoadBalancer ainda provisionando..." -ForegroundColor Yellow
-    Write-Host "Execute em alguns minutos:" -ForegroundColor White
-    Write-Host "  kubectl get svc -n mecanicaos" -ForegroundColor Cyan
-}
-
+Write-Host "Tipo de Conta: " -NoNewline -ForegroundColor Yellow
+Write-Host "$accountType" -ForegroundColor Cyan
+Write-Host "URL da API:    " -NoNewline -ForegroundColor Yellow
+Write-Host "$apiUrl" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "OBSERVABILIDADE (OpenTelemetry):" -ForegroundColor Green
-Write-Host "================================" -ForegroundColor Green
-Write-Host "OTEL Collector: " -NoNewline -ForegroundColor Yellow
-Write-Host "otel-collector.observability:4317 (gRPC) / :4318 (HTTP)" -ForegroundColor Cyan
-Write-Host "Exporters:      " -NoNewline -ForegroundColor Yellow
-Write-Host "Datadog + New Relic" -ForegroundColor Cyan
+Write-Host "Teste de Saude (Health Check):" -ForegroundColor Yellow
+Write-Host "  $healthCheckCmd" -ForegroundColor Cyan
 Write-Host ""
-Write-Host "Dashboards:" -ForegroundColor Yellow
-Write-Host "  Datadog:    https://app.datadoghq.com/apm/traces" -ForegroundColor White
-Write-Host "  New Relic:  https://one.newrelic.com/distributed-tracing" -ForegroundColor White
 
-Write-Host ""
 Write-Host "COMANDOS UTEIS:" -ForegroundColor Green
 Write-Host "===============" -ForegroundColor Green
-Write-Host "Ver pods API:         kubectl get pods -n mecanicaos" -ForegroundColor White
-Write-Host "Ver logs API:         kubectl logs -n mecanicaos -l app=mecanicaos-api" -ForegroundColor White
-Write-Host "Ver pods OTEL:        kubectl get pods -n observability" -ForegroundColor White
-Write-Host "Ver logs OTEL:        kubectl logs -n observability -l app=otel-collector" -ForegroundColor White
-Write-Host "Ver services:         kubectl get svc -A" -ForegroundColor White
+Write-Host "Configurar kubectl:   aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME" -ForegroundColor White
+Write-Host "Ver pods da API:      kubectl get pods -n mecanicaos" -ForegroundColor White
+Write-Host "Ver logs da API:      kubectl logs -n mecanicaos -l app=mecanicaos-api --tail=100" -ForegroundColor White
+Write-Host "Ver servicos:         kubectl get svc -A" -ForegroundColor White
 Write-Host "Destruir tudo:        .\deploy-completo.ps1 -Destroy" -ForegroundColor White
 Write-Host ""

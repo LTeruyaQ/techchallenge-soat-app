@@ -10,6 +10,12 @@ variable "aws_region" {
   description = "Região da AWS (AWS Academy usa us-east-1)"
   type        = string
   default     = "us-east-1"
+
+  validation {
+    # Garante que a região seja us-east-1 se estiver no ambiente Academy.
+    condition     = local.is_academy ? var.aws_region == "us-east-1" : true
+    error_message = "ERRO: O ambiente AWS Academy requer que a região seja 'us-east-1'."
+  }
 }
 
 variable "project_name" {
@@ -41,23 +47,36 @@ variable "availability_zones" {
 }
 
 # ============================================
-# Variáveis IAM - AWS Academy
+# Variáveis IAM - AWS Academy vs. Conta Normal
 # ============================================
 #
-# IMPORTANTE: Copie os nomes exatos das roles do seu AWS Academy Lab
-# Você encontra em: IAM > Roles > Procure por "LabEks"
+# IMPORTANTE:
+# - No AWS Academy, estas variáveis são ignoradas, pois as roles são detectadas automaticamente.
+# - Em uma conta AWS normal, você DEVE preencher estas variáveis com os nomes das roles que você criou.
 #
 
 variable "eks_cluster_role_name" {
-  description = "Nome da LabEksClusterRole do AWS Academy (copie do console AWS)"
+  description = "Nome da IAM role para o Cluster EKS. Ignorado no AWS Academy."
   type        = string
-  # Exemplo: "c175509a4540172l11442646t1w891377-LabEksClusterRole-QQH0SV203Gtw"
+  default     = ""
+
+  validation {
+    # Impede o uso de 'LabRole', que é para acesso geral, não para o cluster.
+    condition     = !can(regex("LabRole", var.eks_cluster_role_name))
+    error_message = "ERRO: Você tentou usar 'LabRole' como a role do cluster. A role correta para o cluster deve conter 'LabEksClusterRole'. O Terraform tentará detectar a role correta automaticamente no ambiente Academy."
+  }
 }
 
 variable "eks_node_role_name" {
-  description = "Nome da LabEksNodeRole do AWS Academy (copie do console AWS)"
+  description = "Nome da IAM role para os Nós do EKS. Ignorado no AWS Academy."
   type        = string
-  # Exemplo: "c175509a4540172l11442646t1w891377135-LabEksNodeRole-r3HYcSAYWMXX"
+  default     = ""
+
+  validation {
+    # Impede o uso de 'LabRole', que é para acesso geral, não para os nós.
+    condition     = !can(regex("LabRole", var.eks_node_role_name))
+    error_message = "ERRO: Você tentou usar 'LabRole' como a role dos nós. A role correta para os nós deve conter 'LabEksNodeRole'. O Terraform tentará detectar a role correta automaticamente no ambiente Academy."
+  }
 }
 
 # ============================================

@@ -6,8 +6,16 @@ resource "aws_eks_node_group" "nodes" {
   cluster_name    = aws_eks_cluster.eks.name
   node_group_name = "nodegroup-${var.project_name}"
 
-  # Usando role do AWS Academy
-  node_role_arn = data.aws_iam_role.eks_node_role.arn
+  # Utiliza a role ARN determinada pela lógica em locals.tf.
+  node_role_arn = local.eks_node_role_arn
+
+  # Validação: Garante que o apply falhe se a role do Academy não for encontrada.
+  lifecycle {
+    precondition {
+      condition     = local.error_message_node_role == ""
+      error_message = local.error_message_node_role
+    }
+  }
 
   subnet_ids     = aws_subnet.public[*].id
   disk_size      = 50
