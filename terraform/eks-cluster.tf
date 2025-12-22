@@ -25,11 +25,14 @@ resource "aws_eks_cluster" "eks" {
       error_message = local.error_message_cluster_role
     }
 
-    # 2. Valida se a policy 'AmazonEKSClusterPolicy' está anexada à role.
+    # 2. Valida se a policy 'AmazonEKSClusterPolicy' está anexada (apenas para contas normais).
     precondition {
-      # O data source 'cluster_policy_check' só encontrará algo se a policy estiver anexada.
-      condition     = data.aws_iam_role_policy_attachment.cluster_policy_check.policy_arn != null
-      error_message = "ERRO: A role do cluster (${local.eks_cluster_role_arn}) nao tem a policy 'AmazonEKSClusterPolicy' anexada. Esta policy e essencial para que o EKS possa gerenciar recursos em seu nome."
+      # A validação só ocorre se NÃO estivermos no Academy e a verificação da policy foi executada.
+      condition     = local.is_academy ? true : (
+        length(data.aws_iam_role_policy_attachment.cluster_policy_check) > 0 &&
+        data.aws_iam_role_policy_attachment.cluster_policy_check[0].policy_arn != null
+      )
+      error_message = "ERRO: A role do cluster (${var.eks_cluster_role_name}) nao tem a policy 'AmazonEKSClusterPolicy' anexada. Esta policy e essencial para o EKS."
     }
   }
 

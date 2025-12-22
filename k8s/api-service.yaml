@@ -12,6 +12,14 @@ metadata:
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-path: "/health"
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-port: "80"
     service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol: "HTTP"
+    # --- Parametros Otimizados para Health Check ---
+    # Intervalo entre checks: 30 segundos.
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval: "30"
+    # Timeout do check: 5 segundos.
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-timeout: "5"
+    # Thresholds: 2 checks bem-sucedidos para considerar saudavel, 2 falhas para insalubre.
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-healthy-threshold: "2"
+    service.beta.kubernetes.io/aws-load-balancer-healthcheck-unhealthy-threshold: "2"
 spec:
   selector:
     app: mecanicaos-api

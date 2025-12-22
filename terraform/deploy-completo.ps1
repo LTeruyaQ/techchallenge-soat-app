@@ -369,7 +369,7 @@ if (-not $SkipInfra) {
 }
 
 # ============================================
-# ETAPA 8: Configurar kubectl
+# ETAPA 8: Configurar kubectl e Namespace
 # ============================================
 
 Write-Title "ETAPA 8: Configurando Acesso ao Cluster"
@@ -382,6 +382,16 @@ if (-not $EKS_CLUSTER_NAME) {
 
 aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
 Write-Success "kubectl configurado!"
+
+Write-Step "Verificando namespace 'mecanicaos'..."
+$namespaceCheck = kubectl get namespace mecanicaos --ignore-not-found -o name
+if ($namespaceCheck) {
+    Write-Success "Namespace 'mecanicaos' ja existe."
+} else {
+    Write-Info "Namespace 'mecanicaos' nao encontrado. Criando..."
+    kubectl create namespace mecanicaos
+    Write-Success "Namespace 'mecanicaos' criado."
+}
 
 # ============================================
 # ETAPA 9: Verificar Deploy e Aguardar Load Balancer
@@ -448,19 +458,16 @@ if ($otelPodName) {
         # Verificar logs por falta de API keys
         $otelLogs = kubectl logs $otelPodName -n observability 2>&1
         if ($otelLogs -match "api_key not available" -or $otelLogs -match "license_key is required") {
-            Write-Warning "OTEL Collector esta rodando, mas falta uma API Key!"
-            Write-Info "Os dados de telemetria nao serao enviados para o Datadog ou New Relic."
-            Write-Info "Verifique se 'datadog_api_key' e 'newrelic_license_key' estao no seu terraform.tfvars."
+            Write-Info "Observabilidade (OTEL): Coletor rodando, mas API Key ausente (opcional)."
+            Write-Info "Para habilitar, configure 'datadog_api_key' ou 'newrelic_license_key' no terraform.tfvars."
         } else {
-            Write-Success "Nenhum problema de API Key detectado nos logs do OTEL."
+            Write-Success "Observabilidade (OTEL): Coletor rodando e configurado."
         }
     } else {
-        Write-Warning "O Pod do OpenTelemetry Collector esta no estado: $otelPodStatus."
-        Write-Info "O deploy continua, mas a observabilidade pode estar comprometida."
+        Write-Info "Observabilidade (OTEL): Pod do coletor no estado '$otelPodStatus'."
     }
 } else {
-    Write-Warning "Nao foi encontrado um pod para o OpenTelemetry Collector."
-    Write-Info "A observabilidade nao esta ativa."
+    Write-Info "Observabilidade (OTEL): Nao configurada (opcional)."
 }
 
 # ============================================

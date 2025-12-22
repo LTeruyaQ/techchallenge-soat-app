@@ -65,24 +65,29 @@ data "aws_iam_role" "eks_node_role_validation" {
   name  = var.eks_node_role_name
 }
 
-# --- Validação de Policies Anexadas ---
+# --- Validação Condicional de Policies Anexadas (Apenas para Contas Normais) ---
 
 # Verifica se a policy 'AmazonEKSClusterPolicy' está anexada à role do cluster.
 data "aws_iam_role_policy_attachment" "cluster_policy_check" {
-  # O nome da role é determinado dinamicamente (Academy vs. Normal).
-  role_name = trimprefix(local.eks_cluster_role_arn, "arn:aws:iam::${local.account_id}:role/")
-  # ARN da policy gerenciada pela AWS.
+  # Executa apenas se NÃO for Academy e uma role for especificada.
+  count = !local.is_academy && var.eks_cluster_role_name != "" ? 1 : 0
+
+  role_name  = var.eks_cluster_role_name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
 }
 
 # Verifica se a policy 'AmazonEKSWorkerNodePolicy' está anexada à role dos nós.
 data "aws_iam_role_policy_attachment" "node_policy_check" {
-  role_name  = trimprefix(local.eks_node_role_arn, "arn:aws:iam::${local.account_id}:role/")
+  count = !local.is_academy && var.eks_node_role_name != "" ? 1 : 0
+
+  role_name  = var.eks_node_role_name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
 }
 
 # Verifica se a policy 'AmazonEC2ContainerRegistryReadOnly' está anexada à role dos nós.
 data "aws_iam_role_policy_attachment" "ecr_policy_check" {
-  role_name  = trimprefix(local.eks_node_role_arn, "arn:aws:iam::${local.account_id}:role/")
+  count = !local.is_academy && var.eks_node_role_name != "" ? 1 : 0
+
+  role_name  = var.eks_node_role_name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
 }

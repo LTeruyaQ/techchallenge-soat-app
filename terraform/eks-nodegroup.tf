@@ -18,16 +18,22 @@ resource "aws_eks_node_group" "nodes" {
       error_message = local.error_message_node_role
     }
 
-    # 2. Valida se a policy 'AmazonEKSWorkerNodePolicy' está anexada.
+    # 2. Valida se a policy 'AmazonEKSWorkerNodePolicy' está anexada (apenas para contas normais).
     precondition {
-      condition     = data.aws_iam_role_policy_attachment.node_policy_check.policy_arn != null
-      error_message = "ERRO: A role dos nos (${local.eks_node_role_arn}) nao tem a policy 'AmazonEKSWorkerNodePolicy' anexada. Essencial para o no se registrar no cluster."
+      condition     = local.is_academy ? true : (
+        length(data.aws_iam_role_policy_attachment.node_policy_check) > 0 &&
+        data.aws_iam_role_policy_attachment.node_policy_check[0].policy_arn != null
+      )
+      error_message = "ERRO: A role dos nos (${var.eks_node_role_name}) nao tem a policy 'AmazonEKSWorkerNodePolicy' anexada."
     }
 
-    # 3. Valida se a policy 'AmazonEC2ContainerRegistryReadOnly' está anexada.
+    # 3. Valida se a policy 'AmazonEC2ContainerRegistryReadOnly' está anexada (apenas para contas normais).
     precondition {
-      condition     = data.aws_iam_role_policy_attachment.ecr_policy_check.policy_arn != null
-      error_message = "ERRO: A role dos nos (${local.eks_node_role_arn}) nao tem a policy 'AmazonEC2ContainerRegistryReadOnly' anexada. Essencial para baixar a imagem Docker do ECR."
+      condition     = local.is_academy ? true : (
+        length(data.aws_iam_role_policy_attachment.ecr_policy_check) > 0 &&
+        data.aws_iam_role_policy_attachment.ecr_policy_check[0].policy_arn != null
+      )
+      error_message = "ERRO: A role dos nos (${var.eks_node_role_name}) nao tem a policy 'AmazonEC2ContainerRegistryReadOnly' anexada. Essencial para baixar a imagem do ECR."
     }
   }
 
