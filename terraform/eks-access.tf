@@ -25,6 +25,13 @@ resource "aws_eks_access_entry" "lab_role" {
   cluster_name  = aws_eks_cluster.eks.name
   principal_arn = data.aws_iam_role.lab_role[0].arn
   type          = "STANDARD"
+
+  lifecycle {
+    precondition {
+      condition     = local.error_message_lab_role == ""
+      error_message = local.error_message_lab_role
+    }
+  }
 }
 
 resource "aws_eks_access_policy_association" "lab_role_admin" {

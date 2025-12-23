@@ -483,7 +483,7 @@ if ($LB_URL) {
     Write-Host "======================" -ForegroundColor Green
     Write-Host "Aplicacao disponivel em:"
     Write-Host "  - Health Check: " -NoNewline -ForegroundColor Yellow
-    Write-Host "http://$LB_URL/health" -ForegroundColor Cyan
+    Write-Host "http://$LB_URL/api/v1/health" -ForegroundColor Cyan
     Write-Host "  - Documentacao (Swagger): " -NoNewline -ForegroundColor Yellow
     Write-Host "http://$LB_URL/swagger/index.html" -ForegroundColor Cyan
     Write-Host ""

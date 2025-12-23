@@ -17,9 +17,8 @@ locals {
   probes = {
     liveness_probe = {
       http_get = {
-        # O endpoint /health deve ser implementado na aplicação para retornar status 200 OK.
-        # Fallback: Se não houver /health, pode-se usar /swagger/index.html ou a raiz /.
-        path = "/health"
+        # O endpoint foi padronizado para /api/v1/health para consistencia e visibilidade no Swagger.
+        path = "/api/v1/health"
         port = 80
       }
       # A sonda começa 10s após o contêiner iniciar.
@@ -31,7 +30,7 @@ locals {
     }
     readiness_probe = {
       http_get = {
-        path = "/health"
+        path = "/api/v1/health"
         port = 80
       }
       initial_delay_seconds = 10

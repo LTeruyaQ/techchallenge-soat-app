@@ -6,14 +6,15 @@ namespace API.Controllers
     /// Controller simples para verificacao de saude da aplicacao.
     /// </summary>
     [ApiController]
-    public class HealthController : ControllerBase
+    [Route("api/v1/[controller]")]
+    public class HealthController : BaseApiController
     {
         /// <summary>
         /// Endpoint que retorna um status "ok" para indicar que a aplicacao esta rodando.
         /// Nao possui dependencias externas para garantir uma resposta rapida e confiavel.
         /// </summary>
         /// <returns>HTTP 200 OK com { "status": "ok" }</returns>
-        [HttpGet("/health")]
+        [HttpGet]
         [ProducesResponseType(typeof(object), 200)]
         public IActionResult GetHealth()
         {

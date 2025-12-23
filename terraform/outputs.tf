@@ -8,11 +8,16 @@
 # --- Informações Críticas para Acesso ---
 
 output "api_url" {
-  description = "URL base da API, exposta pelo Load Balancer. Use esta URL para acessar a aplicacao."
+  description = "[FONTE OFICIAL] URL base (DNS) da API, exposta pelo Load Balancer."
+  # Este output e a fonte oficial de verdade para a URL da aplicacao.
   # O valor e extraido diretamente do status do Service Kubernetes.
-  # O 'try' previne erros no 'plan' caso o Load Balancer ainda nao tenha sido criado.
   # O script de deploy (deploy-completo.ps1) aguarda este valor ficar disponivel.
   value       = try(kubernetes_service.api.status.load_balancer.ingress[0].hostname, "Provisionando Load Balancer...")
+}
+
+output "swagger_url" {
+  description = "URL completa para acessar a documentacao Swagger da API."
+  value       = "http://${local.api_url}/swagger/index.html"
 }
 
 output "kubectl_config_command" {

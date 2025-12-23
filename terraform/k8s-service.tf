@@ -16,7 +16,7 @@ resource "kubernetes_service" "api" {
     }
     annotations = {
       # Anotacoes especificas da AWS para o Load Balancer Controller
-      "service.beta.kubernetes.io/aws-load-balancer-healthcheck-path"           = "/health"
+      "service.beta.kubernetes.io/aws-load-balancer-healthcheck-path"           = "/api/v1/health"
       "service.beta.kubernetes.io/aws-load-balancer-healthcheck-port"            = "80"
       "service.beta.kubernetes.io/aws-load-balancer-healthcheck-protocol"        = "HTTP"
       "service.beta.kubernetes.io/aws-load-balancer-healthcheck-interval"        = "30"

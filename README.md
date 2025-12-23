@@ -168,34 +168,39 @@ Ideal para desenvolvimento e testes rápidos.
    - **API (Swagger):** `http://localhost:80/swagger`
    - **pgAdmin:** `http://localhost:5050` (Login: `admin@mecanicaos.com`, Senha: `admin`)
 
-### 4.2. Provisionamento da Infraestrutura com Terraform
+### 4.2. Deploy Automatizado na AWS (Método Recomendado)
 
-Os scripts para provisionar a infraestrutura em nuvem (AWS) estão no diretório `/infra`.
+Para garantir um deploy seguro, rápido e à prova de erros, especialmente no ambiente AWS Academy, foi criado um script de automação que orquestra todo o processo.
 
-1. **Pré-requisitos:**
-   - [Terraform CLI](https://learn.hashicorp.com/tutorials/terraform/install-cli) instalado.
-   - Credenciais da AWS configuradas no seu ambiente.
+**Este é o método recomendado para o deploy.**
 
-2. **Acesse o diretório do Terraform:**
-   ```bash
-   cd infra
-   ```
+1.  **Pré-requisitos:**
+    *   [Docker Desktop](https://www.docker.com/products/docker-desktop/), [Terraform](https://learn.hashicorp.com/tutorials/terraform/install-cli), [AWS CLI](https://aws.amazon.com/cli/) e [kubectl](https://kubernetes.io/docs/tasks/tools/) instalados.
+    *   Credenciais da AWS configuradas corretamente no seu ambiente (`~/.aws/credentials`).
 
-3. **Inicialize o Terraform:**
-   ```bash
-   terraform init
-   ```
+2.  **Navegue até o diretório do Terraform:**
+    ```powershell
+    cd terraform
+    ```
 
-4. **Planeje e aplique a infraestrutura:**
-   ```bash
-   terraform plan
-   terraform apply
-   ```
-   Estes comandos criarão o cluster Kubernetes (EKS), o banco de dados (RDS) e os recursos de rede necessários.
+3.  **Execute o script de deploy:**
+    ```powershell
+    .\deploy-completo.ps1
+    ```
 
-### 4.3. Deploy em Kubernetes
+O script irá automaticamente:
+- Detectar se você está em um ambiente AWS Academy.
+- Validar suas roles e permissões.
+- Construir e publicar a imagem Docker no ECR.
+- Provisionar toda a infraestrutura na AWS com Terraform.
+- Aguardar o Load Balancer ficar pronto.
+- Fornecer a URL final da aplicação e outros diagnósticos úteis.
 
-Após provisionar a infraestrutura, siga os passos para o deploy da aplicação.
+Para mais opções (como destruir a infraestrutura), consulte os parâmetros dentro do próprio script.
+
+### 4.3. Deploy Manual (Alternativo)
+
+Se preferir, você pode executar os passos manualmente, mas isso requer mais atenção aos detalhes.
 
 1. **Pré-requisitos:**
    - `kubectl` configurado para apontar para o seu cluster (o Terraform gera o `kubeconfig`).
