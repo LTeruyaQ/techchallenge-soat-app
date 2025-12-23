@@ -476,33 +476,29 @@ if ($otelPodName) {
 
 Write-Title "DEPLOY CONCLUIDO!"
 
-Write-Host ""
-Write-Host "Para ver todas as informacoes novamente, execute:" -ForegroundColor Yellow
-Write-Host "  terraform output" -ForegroundColor Cyan
-Write-Host ""
-
-# Buscar os outputs do Terraform para exibir um resumo final
-$apiUrl = terraform output -raw api_url 2>$null
-$healthCheckCmd = terraform output -raw health_check_command 2>$null
-$accountType = terraform output -raw account_type 2>$null
-
-Write-Host "INFORMACOES DE ACESSO:" -ForegroundColor Green
-Write-Host "======================" -ForegroundColor Green
-Write-Host ""
-Write-Host "Tipo de Conta: " -NoNewline -ForegroundColor Yellow
-Write-Host "$accountType" -ForegroundColor Cyan
-Write-Host "URL da API:    " -NoNewline -ForegroundColor Yellow
-Write-Host "$apiUrl" -ForegroundColor Cyan
-Write-Host ""
-Write-Host "Teste de Saude (Health Check):" -ForegroundColor Yellow
-Write-Host "  $healthCheckCmd" -ForegroundColor Cyan
-Write-Host ""
+# A variável $LB_URL foi preenchida na etapa 9
+if ($LB_URL) {
+    Write-Host ""
+    Write-Host "INFORMACOES DE ACESSO:" -ForegroundColor Green
+    Write-Host "======================" -ForegroundColor Green
+    Write-Host "Aplicacao disponivel em:"
+    Write-Host "  - Health Check: " -NoNewline -ForegroundColor Yellow
+    Write-Host "http://$LB_URL/health" -ForegroundColor Cyan
+    Write-Host "  - Documentacao (Swagger): " -NoNewline -ForegroundColor Yellow
+    Write-Host "http://$LB_URL/swagger/index.html" -ForegroundColor Cyan
+    Write-Host ""
+} else {
+    Write-Warning "O Load Balancer da AWS ainda esta sendo provisionado."
+    Write-Info "Isso pode levar alguns minutos. Para obter a URL, execute o comando abaixo daqui a pouco:"
+    Write-Host "  kubectl get svc mecanicaos-service -n mecanicaos -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'" -ForegroundColor Cyan
+    Write-Host ""
+}
 
 Write-Host "COMANDOS UTEIS:" -ForegroundColor Green
 Write-Host "===============" -ForegroundColor Green
-Write-Host "Configurar kubectl:   aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME" -ForegroundColor White
-Write-Host "Ver pods da API:      kubectl get pods -n mecanicaos" -ForegroundColor White
-Write-Host "Ver logs da API:      kubectl logs -n mecanicaos -l app=mecanicaos-api --tail=100" -ForegroundColor White
-Write-Host "Ver servicos:         kubectl get svc -A" -ForegroundColor White
-Write-Host "Destruir tudo:        .\deploy-completo.ps1 -Destroy" -ForegroundColor White
+Write-Host "Ver todos os outputs do Terraform: terraform output" -ForegroundColor White
+Write-Host "Configurar kubectl novamente:      aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME" -ForegroundColor White
+Write-Host "Ver pods da aplicacao:           kubectl get pods -n mecanicaos" -ForegroundColor White
+Write-Host "Ver logs da aplicacao:           kubectl logs -n mecanicaos -l app=mecanicaos-api --tail=100" -ForegroundColor White
+Write-Host "Destruir toda a infraestrutura:  .\deploy-completo.ps1 -Destroy" -ForegroundColor White
 Write-Host ""

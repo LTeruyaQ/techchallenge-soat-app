@@ -8,9 +8,11 @@
 # --- Informações Críticas para Acesso ---
 
 output "api_url" {
-  description = "URL base da API (Load Balancer). Pode levar alguns minutos para se tornar ativa."
-  # O 'try' evita erros se o serviço ainda não tiver um load balancer provisionado.
-  value       = try("http://${kubernetes_service.api.status.load_balancer.ingress[0].hostname}/swagger/index.html", "Aguardando provisionamento do Load Balancer...")
+  description = "URL base da API, exposta pelo Load Balancer. Use esta URL para acessar a aplicacao."
+  # O valor e extraido diretamente do status do Service Kubernetes.
+  # O 'try' previne erros no 'plan' caso o Load Balancer ainda nao tenha sido criado.
+  # O script de deploy (deploy-completo.ps1) aguarda este valor ficar disponivel.
+  value       = try(kubernetes_service.api.status.load_balancer.ingress[0].hostname, "Provisionando Load Balancer...")
 }
 
 output "kubectl_config_command" {
