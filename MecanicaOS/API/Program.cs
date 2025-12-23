@@ -19,6 +19,7 @@ using Microsoft.OpenApi.Models;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json.Serialization;
+using HealthChecks.NpgSql;
 using HealthChecks.UI.Client;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
@@ -184,8 +185,9 @@ builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
     options.Level = CompressionLevel.Optimal;
 });
 
+// Adiciona o Health Check para o banco de dados.
 builder.Services.AddHealthChecks()
-    .AddNpgsql(connectionString!, name: "database"); // Adiciona um check de prontidao para o banco
+    .AddNpgSql(connectionString!);
 
 builder.Services.AddResponseCompression(options =>
 {
