@@ -20,20 +20,25 @@ output "swagger_url" {
   value       = "http://${local.api_url}/swagger/index.html"
 }
 
+output "health_live_url" {
+  description = "URL do endpoint de Liveness (usado pelo Kubernetes)."
+  value       = "http://${local.api_url}/health/live"
+}
+
+output "health_ready_url" {
+  description = "URL do endpoint de Readiness (usado pelo Load Balancer e Kubernetes)."
+  value       = "http://${local.api_url}/health/ready"
+}
+
 output "kubectl_config_command" {
   description = "Comando para configurar o kubectl para acessar o cluster EKS."
   value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${aws_eks_cluster.eks.name}"
 }
 
-output "health_check_command" {
-  description = "Comando para verificar a saúde da aplicação (use após o Load Balancer estar ativo)."
-  value       = "curl http://${try(kubernetes_service.api.status.load_balancer.ingress[0].hostname, "LOAD_BALANCER_HOSTNAME")}/health"
-}
-
 # --- Detalhes do Ambiente ---
 
-output "account_type" {
-  description = "Tipo de conta detectada (AWS Academy ou Normal)."
+output "environment_type" {
+  description = "Tipo de ambiente detectado (AWS Academy ou Conta Normal)."
   value       = local.is_academy ? "AWS Academy" : "Conta Normal"
 }
 
@@ -42,9 +47,14 @@ output "eks_cluster_name" {
   value       = aws_eks_cluster.eks.name
 }
 
-output "kubernetes_namespace" {
+output "namespace" {
   description = "Namespace Kubernetes onde a aplicação foi implantada."
   value       = kubernetes_namespace.app.metadata[0].name
+}
+
+output "otel_status" {
+  description = "Status da configuracao do OpenTelemetry (Observabilidade)."
+  value       = var.datadog_api_key != "" || var.newrelic_license_key != "" ? "Configurado" : "Nao Configurado (Opcional)"
 }
 
 output "eks_node_group_name" {

@@ -25,8 +25,17 @@ param(
     [switch]$SkipBuild,
     [switch]$SkipInfra,
     [switch]$Destroy,
-    [switch]$Plan
+    [switch]$Plan,
+    [switch]$Debug,
+    [switch]$Quiet
 )
+
+if ($Debug) {
+    $global:DebugPreference = "Continue"
+}
+if ($Quiet) {
+    $global:InformationPreference = "SilentlyContinue"
+}
 
 $ErrorActionPreference = "Stop"
 
@@ -405,17 +414,48 @@ $maxRetries = 60 # 60 tentativas * 10s = 10 minutos
 $retryCount = 0
 
 while ($retryCount -lt $maxRetries) {
+    Write-Debug "Tentativa $retryCount..."
+    # Diagnostico: Namespace existe?
+    $nsCheck = kubectl get ns mecanicaos -o name --ignore-not-found
+    if (-not $nsCheck) {
+        Write-Warning "Diagnostico: Namespace 'mecanicaos' nao encontrado. Aguardando criacao..."
+    } else {
+        Write-Debug "Diagnostico: Namespace 'mecanicaos' OK."
+    }
+
+    # Diagnostico: Service existe?
+    $svcCheck = kubectl get svc mecanicaos-service -n mecanicaos -o name --ignore-not-found
+    if (-not $svcCheck) {
+        Write-Warning "Diagnostico: Service 'mecanicaos-service' nao encontrado. Aguardando criacao..."
+    } else {
+        Write-Debug "Diagnostico: Service 'mecanicaos-service' OK."
+    }
+
+    # Tenta obter a URL
     $LB_URL = kubectl get svc mecanicaos-service -n mecanicaos -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>$null
     if ($LB_URL) {
         Write-Success "Load Balancer esta pronto!"
         Write-Info "URL: $LB_URL"
         break
-    } else {
-        $retryCount++
-        $timeLeft = ($maxRetries - $retryCount) * 10
-        Write-Host "Tentativa $retryCount de $maxRetries... Aguardando 10s. (Tempo restante estimado: $($timeLeft)s)" -ForegroundColor Gray
-        Start-Sleep -Seconds 10
     }
+
+    # Diagnostico: Pods estao prontos?
+    $readyPods = (kubectl get pods -n mecanicaos -l app=mecanicaos-api -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' 2>$null) -split ' ' | Where-Object { $_ -eq 'True' }
+    $totalPods = (kubectl get pods -n mecanicaos -l app=mecanicaos-api -o jsonpath='{.items[*].metadata.name}' 2>$null) -split ' '
+    if ($totalPods.Count -gt 0) {
+        Write-Info "Diagnostico: $($readyPods.Count) de $($totalPods.Count) pods estao prontos."
+        if ($readyPods.Count -eq 0) {
+            Write-Warning "Nenhum pod esta 'Ready'. Verificando eventos..."
+            kubectl get events -n mecanicaos --sort-by='.metadata.creationTimestamp' --field-selector involvedObject.kind=Pod | Select-Object -Last 5
+        }
+    } else {
+        Write-Warning "Diagnostico: Nenhum pod encontrado para a aplicacao ainda."
+    }
+
+    $retryCount++
+    $timeLeft = ($maxRetries - $retryCount) * 10
+    Write-Host "Tentativa $retryCount de $maxRetries... Aguardando 10s. (Tempo restante estimado: $($timeLeft)s)" -ForegroundColor Gray
+    Start-Sleep -Seconds 10
 }
 
 if (-not $LB_URL) {
@@ -474,31 +514,48 @@ if ($otelPodName) {
 # RESUMO FINAL
 # ============================================
 
-Write-Title "DEPLOY CONCLUIDO!"
+Write-Title "RELATORIO FINAL DO DEPLOY"
 
-# A variável $LB_URL foi preenchida na etapa 9
+# Obter outputs do Terraform para o relatorio
+$outputs = terraform output -json | ConvertFrom-Json
+$envType = $outputs.environment_type.value
+$otelStatus = $outputs.otel_status.value
+$namespace = $outputs.namespace.value
+
+# Status do Load Balancer
 if ($LB_URL) {
-    Write-Host ""
-    Write-Host "INFORMACOES DE ACESSO:" -ForegroundColor Green
-    Write-Host "======================" -ForegroundColor Green
-    Write-Host "Aplicacao disponivel em:"
-    Write-Host "  - Health Check: " -NoNewline -ForegroundColor Yellow
-    Write-Host "http://$LB_URL/api/v1/health" -ForegroundColor Cyan
-    Write-Host "  - Documentacao (Swagger): " -NoNewline -ForegroundColor Yellow
-    Write-Host "http://$LB_URL/swagger/index.html" -ForegroundColor Cyan
-    Write-Host ""
+    $lbStatus = "[OK] Load Balancer online"
 } else {
-    Write-Warning "O Load Balancer da AWS ainda esta sendo provisionado."
-    Write-Info "Isso pode levar alguns minutos. Para obter a URL, execute o comando abaixo daqui a pouco:"
-    Write-Host "  kubectl get svc mecanicaos-service -n mecanicaos -o jsonpath='{.status.loadBalancer.ingress[0].hostname}'" -ForegroundColor Cyan
-    Write-Host ""
+    $lbStatus = "[AVISO] Load Balancer ainda provisionando"
 }
 
-Write-Host "COMANDOS UTEIS:" -ForegroundColor Green
-Write-Host "===============" -ForegroundColor Green
-Write-Host "Ver todos os outputs do Terraform: terraform output" -ForegroundColor White
-Write-Host "Configurar kubectl novamente:      aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME" -ForegroundColor White
-Write-Host "Ver pods da aplicacao:           kubectl get pods -n mecanicaos" -ForegroundColor White
-Write-Host "Ver logs da aplicacao:           kubectl logs -n mecanicaos -l app=mecanicaos-api --tail=100" -ForegroundColor White
-Write-Host "Destruir toda a infraestrutura:  .\deploy-completo.ps1 -Destroy" -ForegroundColor White
+# Status do OTEL
+if ($otelStatus -eq "Configurado") {
+    $otelReport = "[OK] Observabilidade configurada (OTEL)"
+} else {
+    $otelReport = "[INFO] Observabilidade nao configurada (opcional)"
+}
+
+# Imprimir Relatorio
+Write-Host "✔️  Namespace '$namespace' verificado/criado"
+Write-Host "✔️  Aplicacao 'mecanicaos-api' deployada"
+Write-Host "$lbStatus"
+Write-Host "$otelReport"
+Write-Host "ℹ️  Ambiente detectado: $envType"
 Write-Host ""
+
+# Imprimir Outputs Amigaveis
+if ($LB_URL) {
+    Write-Host "Sua API esta no ar! 🎉" -ForegroundColor Green
+    Write-Host "-------------------------"
+    Write-Host "Base URL: " -NoNewline; Write-Host "http://$LB_URL" -ForegroundColor Cyan
+    Write-Host "Swagger:  " -NoNewline; Write-Host "http://$LB_URL/swagger/index.html" -ForegroundColor Cyan
+    Write-Host "Health:"
+    Write-Host "  - Live: " -NoNewline; Write-Host "http://$LB_URL/health/live" -ForegroundColor Cyan
+    Write-Host "  - Ready:" -NoNewline; Write-Host "http://$LB_URL/health/ready" -ForegroundColor Cyan
+    Write-Host ""
+} else {
+    Write-Warning "Aguarde o Load Balancer ficar online para acessar a API."
+    Write-Info "Use 'terraform output api_url' para obter a URL em alguns minutos."
+    Write-Host ""
+}

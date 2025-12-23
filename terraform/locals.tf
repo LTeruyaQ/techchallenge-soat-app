@@ -38,6 +38,9 @@ locals {
   )
 
   # --- Configurações Gerais ---
+  # URL base da API, usada para construir os outputs.
+  api_url = try(kubernetes_service.api.status.load_balancer.ingress[0].hostname, "")
+
   # String de conexão do banco de dados (Supabase)
   db_connection_string = "Host=${var.db_host};Port=${var.db_port};Database=${var.db_name};Username=${var.db_username};Password=${var.db_password};SSL Mode=Require;Trust Server Certificate=true"
 

@@ -17,24 +17,22 @@ locals {
   probes = {
     liveness_probe = {
       http_get = {
-        # O endpoint foi padronizado para /api/v1/health para consistencia e visibilidade no Swagger.
-        path = "/api/v1/health"
+        # Liveness probe aponta para /health/live - um check rapido que nao depende de nada.
+        path = "/health/live"
         port = 80
       }
-      # A sonda começa 10s após o contêiner iniciar.
-      initial_delay_seconds = 10
-      # A verificação é repetida a cada 10s.
-      period_seconds = 10
-      # O contêiner é considerado "morto" após 3 falhas consecutivas.
-      failure_threshold = 3
+      initial_delay_seconds = 15 # Aumentado para dar tempo de iniciar
+      period_seconds        = 20
+      failure_threshold     = 3
     }
     readiness_probe = {
       http_get = {
-        path = "/api/v1/health"
+        # Readiness probe aponta para /health/ready - valida dependencias como o banco.
+        path = "/health/ready"
         port = 80
       }
-      initial_delay_seconds = 10
-      period_seconds        = 10
+      initial_delay_seconds = 20 # Aumentado para dar tempo de conectar com dependencias
+      period_seconds        = 30
       failure_threshold     = 3
     }
   }

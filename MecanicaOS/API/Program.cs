@@ -19,6 +19,8 @@ using Microsoft.OpenApi.Models;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json.Serialization;
+using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
@@ -182,6 +184,9 @@ builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
     options.Level = CompressionLevel.Optimal;
 });
 
+builder.Services.AddHealthChecks()
+    .AddNpgsql(connectionString!, name: "database"); // Adiciona um check de prontidao para o banco
+
 builder.Services.AddResponseCompression(options =>
 {
     options.EnableForHttps = true;
@@ -234,6 +239,19 @@ app.UseReDoc(c =>
 app.UseEndpoints(endpoints =>
 {
     _ = endpoints.MapControllers();
+
+    // Endpoint de Liveness: Apenas verifica se a aplicacao esta respondendo.
+    endpoints.MapHealthChecks("/health/live", new HealthCheckOptions
+    {
+        Predicate = _ => false, // Nao executa nenhum check de dependencia.
+        ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+    });
+
+    // Endpoint de Readiness: Verifica se a aplicacao esta pronta para receber trafego (incluindo dependencias).
+    endpoints.MapHealthChecks("/health/ready", new HealthCheckOptions
+    {
+        ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+    });
 });
 
 #if DEBUG
