@@ -1,4 +1,0 @@
-ERRO: Não encontrei a role do Node Group EKS para o AWS Academy.
-Verifique em IAM > Roles se uma role contendo '-LabEksNodeRole-' existe.
-Se existir, certifique-se de que sua configuração de credenciais AWS aponta para a conta correta.
-O nome esperado é algo como: 'arn:aws:iam::123456789012:role/c18463-8d591f7a-LabEksNodeRole-12345ABCD'

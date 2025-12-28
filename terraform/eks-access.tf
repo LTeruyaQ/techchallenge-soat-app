@@ -1,45 +1,28 @@
 # ============================================
-# EKS Access Entry e Policy (Exclusivo para AWS Academy)
+# EKS Access Entry e Policy
 # ============================================
 #
-# Cria as permissões necessárias para que o usuário do AWS Academy Lab
-# (LabRole e voclabs) possa administrar o cluster EKS.
-# Estes recursos são criados apenas se 'local.is_academy' for verdadeiro.
+# Necessário para AWS Academy permitir acesso ao cluster
 #
 # ============================================
 
-# O ARN da role 'voclabs' é construído dinamicamente.
-# Não é possível usar um data source 'aws_iam_role' porque o AWS Academy
-# restringe a permissão iam:GetRole para esta role específica,
-# então construímos o ARN manualmente, o que é uma exceção aceitável.
+# ARN da role voclabs (usuário do AWS Academy)
+# Não podemos usar data source porque o AWS Academy bloqueia iam:GetRole para esta role
 locals {
   voclabs_role_arn = "arn:aws:iam::${local.account_id}:role/voclabs"
 }
 
-# --- Acesso para a LabRole ---
-
+# Access Entry para LabRole
 resource "aws_eks_access_entry" "lab_role" {
-  # Cria este recurso apenas no ambiente Academy.
-  count = local.is_academy ? 1 : 0
-
-  cluster_name  = aws_eks_cluster.eks.name
-  principal_arn = data.aws_iam_role.lab_role[0].arn
-  type          = "STANDARD"
-
-  lifecycle {
-    precondition {
-      condition     = local.error_message_lab_role == ""
-      error_message = local.error_message_lab_role
-    }
-  }
+  cluster_name      = aws_eks_cluster.eks.name
+  principal_arn     = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/LabRole"
+  type              = "STANDARD"
 }
 
 resource "aws_eks_access_policy_association" "lab_role_admin" {
-  count = local.is_academy ? 1 : 0
-
   cluster_name  = aws_eks_cluster.eks.name
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy"
-  principal_arn = data.aws_iam_role.lab_role[0].arn
+  principal_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/LabRole"
 
   access_scope {
     type = "cluster"
@@ -48,21 +31,15 @@ resource "aws_eks_access_policy_association" "lab_role_admin" {
   depends_on = [aws_eks_access_entry.lab_role]
 }
 
-# --- Acesso para a voclabs (usuário do console) ---
-
+# Access Entry para voclabs (usuário do console AWS Academy)
 resource "aws_eks_access_entry" "voclabs" {
-  count = local.is_academy ? 1 : 0
-
-  cluster_name  = aws_eks_cluster.eks.name
-  principal_arn = local.voclabs_role_arn
-  type          = "STANDARD"
+  cluster_name      = aws_eks_cluster.eks.name
+  principal_arn     = local.voclabs_role_arn
+  type              = "STANDARD"
 }
 
 resource "aws_eks_access_policy_association" "voclabs_admin" {
-  count = local.is_academy ? 1 : 0
-
   cluster_name  = aws_eks_cluster.eks.name
-  # Usamos uma policy mais restrita para o usuário do console, como boa prática.
   policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
   principal_arn = local.voclabs_role_arn
 

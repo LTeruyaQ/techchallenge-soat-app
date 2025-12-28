@@ -25,17 +25,8 @@ param(
     [switch]$SkipBuild,
     [switch]$SkipInfra,
     [switch]$Destroy,
-    [switch]$Plan,
-    [switch]$Debug,
-    [switch]$Quiet
+    [switch]$Plan
 )
-
-if ($Debug) {
-    $global:DebugPreference = "Continue"
-}
-if ($Quiet) {
-    $global:InformationPreference = "SilentlyContinue"
-}
 
 $ErrorActionPreference = "Stop"
 
@@ -162,10 +153,63 @@ try {
 }
 
 # ============================================
-# ETAPA 3: Verificar terraform.tfvars
+# ============================================
+# ETAPA 3: Deteccao de Ambiente e Validacao
 # ============================================
 
-Write-Title "ETAPA 3: Verificando Configuracao"
+Write-Title "ETAPA 3: Deteccao de Ambiente e Validacao"
+
+$isAcademy = $false
+$terraformVars = ""
+
+Write-Step "Verificando se e ambiente AWS Academy..."
+try {
+    $labRole = aws iam get-role --role-name LabRole --query 'Role.Arn' --output text 2>$null
+    if ($labRole) {
+        Write-Success "Ambiente AWS Academy detectado (LabRole encontrada)!"
+        $isAcademy = $true
+    } else {
+        Write-Info "LabRole nao encontrada. Assumindo conta AWS normal."
+    }
+} catch {
+    Write-Info "Nao foi possivel verificar a LabRole. Assumindo conta AWS normal."
+}
+
+if ($isAcademy) {
+    # Validacao de Regiao para o Academy
+    if ($AWS_REGION -ne "us-east-1") {
+        Write-Error "ERRO DE CONFIGURACAO: Modo AWS Academy detectado!"
+        Write-Info "No ambiente AWS Academy, a regiao DEVE ser 'us-east-1'."
+        Write-Info "A regiao atual no script e '$AWS_REGION'. Por favor, corrija e tente novamente."
+        exit 1
+    }
+
+    Write-Step "Buscando roles do EKS dinamicamente..."
+    try {
+        $clusterRole = aws iam list-roles --query 'Roles[?contains(RoleName, `LabEksClusterRole`)].RoleName' --output text
+        $nodeRole = aws iam list-roles --query 'Roles[?contains(RoleName, `LabEksNodeRole`)].RoleName' --output text
+
+        if ($clusterRole -and $nodeRole) {
+            Write-Success "Roles do EKS encontradas!"
+            Write-Info "Cluster Role: $clusterRole"
+            Write-Info "Node Role: $nodeRole"
+            $terraformVars = "-var=`"eks_cluster_role_name=$clusterRole`" -var=`"eks_node_role_name=$nodeRole`""
+        } else {
+            Write-Error "ERRO: Nao foi possivel encontrar as roles 'LabEksClusterRole' e 'LabEksNodeRole'."
+            Write-Info "Certifique-se de que voce esta no ambiente correto do AWS Academy."
+            exit 1
+        }
+    } catch {
+        Write-Error "Falha ao buscar roles do EKS. Verifique suas permissoes do IAM."
+        exit 1
+    }
+}
+
+# ============================================
+# ETAPA 4: Verificar terraform.tfvars
+# ============================================
+
+Write-Title "ETAPA 4: Verificando Configuracao"
 
 Write-Step "Verificando terraform.tfvars..."
 if (-not (Test-Path "terraform.tfvars")) {
@@ -368,7 +412,11 @@ if (-not $SkipInfra) {
     Write-Step "Aplicando configuracao..."
     Write-Warning "Isso pode levar 15-20 minutos para criar o cluster EKS!"
     
-    terraform apply -auto-approve
+    $applyCommand = "terraform apply -auto-approve"
+    if ($terraformVars) {
+        $applyCommand += " $terraformVars"
+    }
+    Invoke-Expression $applyCommand
     
     if ($LASTEXITCODE -ne 0) {
         Write-Error "Falha ao aplicar Terraform!"
@@ -378,7 +426,7 @@ if (-not $SkipInfra) {
 }
 
 # ============================================
-# ETAPA 8: Configurar kubectl e Namespace
+# ETAPA 8: Configurar kubectl
 # ============================================
 
 Write-Title "ETAPA 8: Configurando Acesso ao Cluster"
@@ -392,170 +440,85 @@ if (-not $EKS_CLUSTER_NAME) {
 aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
 Write-Success "kubectl configurado!"
 
-Write-Step "Verificando namespace 'mecanicaos'..."
-$namespaceCheck = kubectl get namespace mecanicaos --ignore-not-found -o name
-if ($namespaceCheck) {
-    Write-Success "Namespace 'mecanicaos' ja existe."
-} else {
-    Write-Info "Namespace 'mecanicaos' nao encontrado. Criando..."
-    kubectl create namespace mecanicaos
-    Write-Success "Namespace 'mecanicaos' criado."
-}
-
 # ============================================
-# ETAPA 9: Verificar Deploy e Aguardar Load Balancer
+# ETAPA 9: Verificar Deploy
 # ============================================
 
 Write-Title "ETAPA 9: Verificando Deploy"
 
-Write-Step "Aguardando Load Balancer ficar pronto..."
-$LB_URL = $null
-$maxRetries = 60 # 60 tentativas * 10s = 10 minutos
-$retryCount = 0
+Write-Step "Aguardando pods iniciarem (30 segundos)..."
+Start-Sleep -Seconds 30
 
-while ($retryCount -lt $maxRetries) {
-    Write-Debug "Tentativa $retryCount..."
-    # Diagnostico: Namespace existe?
-    $nsCheck = kubectl get ns mecanicaos -o name --ignore-not-found
-    if (-not $nsCheck) {
-        Write-Warning "Diagnostico: Namespace 'mecanicaos' nao encontrado. Aguardando criacao..."
-    } else {
-        Write-Debug "Diagnostico: Namespace 'mecanicaos' OK."
-    }
-
-    # Diagnostico: Service existe?
-    $svcCheck = kubectl get svc mecanicaos-service -n mecanicaos -o name --ignore-not-found
-    if (-not $svcCheck) {
-        Write-Warning "Diagnostico: Service 'mecanicaos-service' nao encontrado. Aguardando criacao..."
-    } else {
-        Write-Debug "Diagnostico: Service 'mecanicaos-service' OK."
-    }
-
-    # Tenta obter a URL
-    $LB_URL = kubectl get svc mecanicaos-service -n mecanicaos -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>$null
-    if ($LB_URL) {
-        Write-Success "Load Balancer esta pronto!"
-        Write-Info "URL: $LB_URL"
-        break
-    }
-
-    # Diagnostico: Pods estao prontos?
-    $readyPods = (kubectl get pods -n mecanicaos -l app=mecanicaos-api -o jsonpath='{.items[*].status.conditions[?(@.type=="Ready")].status}' 2>$null) -split ' ' | Where-Object { $_ -eq 'True' }
-    $totalPods = (kubectl get pods -n mecanicaos -l app=mecanicaos-api -o jsonpath='{.items[*].metadata.name}' 2>$null) -split ' '
-    if ($totalPods.Count -gt 0) {
-        Write-Info "Diagnostico: $($readyPods.Count) de $($totalPods.Count) pods estao prontos."
-        if ($readyPods.Count -eq 0) {
-            Write-Warning "Nenhum pod esta 'Ready'. Verificando eventos..."
-            kubectl get events -n mecanicaos --sort-by='.metadata.creationTimestamp' --field-selector involvedObject.kind=Pod | Select-Object -Last 5
-        }
-    } else {
-        Write-Warning "Diagnostico: Nenhum pod encontrado para a aplicacao ainda."
-    }
-
-    $retryCount++
-    $timeLeft = ($maxRetries - $retryCount) * 10
-    Write-Host "Tentativa $retryCount de $maxRetries... Aguardando 10s. (Tempo restante estimado: $($timeLeft)s)" -ForegroundColor Gray
-    Start-Sleep -Seconds 10
-}
-
-if (-not $LB_URL) {
-    Write-Error "Timeout! O Load Balancer nao ficou pronto em 10 minutos."
-    Write-Info "Verifique o status do servico com: kubectl get svc mecanicaos-service -n mecanicaos -o yaml"
-    # O script continua para mostrar outras informações úteis.
-}
-
-Write-Step "Status final dos Pods (mecanicaos):"
+Write-Step "Status dos Pods (mecanicaos):"
 kubectl get pods -n mecanicaos
 
+Write-Step "Status dos Services (mecanicaos):"
+kubectl get svc -n mecanicaos
+
+Write-Step "Obtendo URL do LoadBalancer..."
+$LB_URL = kubectl get svc mecanicaos-service -n mecanicaos -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>$null
+
 # ============================================
-# ETAPA 10: Logs e Diagnóstico Automático
+# ETAPA 10: Verificar OpenTelemetry Collector
 # ============================================
 
-Write-Title "ETAPA 10: Logs e Diagnostico"
+Write-Title "ETAPA 10: Verificando OpenTelemetry Collector"
 
-Write-Step "Buscando logs da aplicacao..."
-try {
-    # Tenta buscar os logs dos pods com o label app=mecanicaos-api
-    $appLogs = kubectl logs -n mecanicaos -l app=mecanicaos-api --tail=50
-    Write-Host "--- Ultimos 50 logs da API ---" -ForegroundColor Gray
-    Write-Host $appLogs
-    Write-Host "-----------------------------" -ForegroundColor Gray
-    Write-Success "Logs da aplicacao obtidos."
-} catch {
-    Write-Warning "Nao foi possivel obter os logs da aplicacao. Os pods podem estar iniciando."
-}
+Write-Step "Status dos Pods (observability):"
+kubectl get pods -n observability
 
-# --- Diagnóstico do OpenTelemetry Collector ---
+Write-Step "Status dos Services (observability):"
+kubectl get svc -n observability
 
-Write-Step "Diagnosticando OpenTelemetry Collector..."
-$otelPodName = kubectl get pods -n observability -l app=otel-collector -o jsonpath='{.items[0].metadata.name}' 2>$null
-
-if ($otelPodName) {
-    $otelPodStatus = kubectl get pod $otelPodName -n observability -o jsonpath='{.status.phase}' 2>$null
-    if ($otelPodStatus -eq "Running") {
-        Write-Success "Pod do OpenTelemetry Collector esta RUNNING."
-
-        # Verificar logs por falta de API keys
-        $otelLogs = kubectl logs $otelPodName -n observability 2>&1
-        if ($otelLogs -match "api_key not available" -or $otelLogs -match "license_key is required") {
-            Write-Info "Observabilidade (OTEL): Coletor rodando, mas API Key ausente (opcional)."
-            Write-Info "Para habilitar, configure 'datadog_api_key' ou 'newrelic_license_key' no terraform.tfvars."
-        } else {
-            Write-Success "Observabilidade (OTEL): Coletor rodando e configurado."
-        }
-    } else {
-        Write-Info "Observabilidade (OTEL): Pod do coletor no estado '$otelPodStatus'."
-    }
+# Verificar se o OTEL Collector está rodando
+$otelPodStatus = kubectl get pods -n observability -l app=otel-collector -o jsonpath='{.items[0].status.phase}' 2>$null
+if ($otelPodStatus -eq "Running") {
+    Write-Success "OpenTelemetry Collector esta rodando!"
+    Write-Info "Exportando traces para Datadog e New Relic"
 } else {
-    Write-Info "Observabilidade (OTEL): Nao configurada (opcional)."
+    Write-Warning "OpenTelemetry Collector ainda nao esta pronto"
+    Write-Info "Verifique com: kubectl logs -n observability -l app=otel-collector"
 }
 
 # ============================================
 # RESUMO FINAL
 # ============================================
 
-Write-Title "RELATORIO FINAL DO DEPLOY"
+Write-Title "DEPLOY CONCLUIDO!"
 
-# Obter outputs do Terraform para o relatorio
-$outputs = terraform output -json | ConvertFrom-Json
-$envType = $outputs.environment_type.value
-$otelStatus = $outputs.otel_status.value
-$namespace = $outputs.namespace.value
-
-# Status do Load Balancer
-if ($LB_URL) {
-    $lbStatus = "[OK] Load Balancer online"
-} else {
-    $lbStatus = "[AVISO] Load Balancer ainda provisionando"
-}
-
-# Status do OTEL
-if ($otelStatus -eq "Configurado") {
-    $otelReport = "[OK] Observabilidade configurada (OTEL)"
-} else {
-    $otelReport = "[INFO] Observabilidade nao configurada (opcional)"
-}
-
-# Imprimir Relatorio
-Write-Host "✔️  Namespace '$namespace' verificado/criado"
-Write-Host "✔️  Aplicacao 'mecanicaos-api' deployada"
-Write-Host "$lbStatus"
-Write-Host "$otelReport"
-Write-Host "ℹ️  Ambiente detectado: $envType"
+Write-Host ""
+Write-Host "INFORMACOES DE ACESSO:" -ForegroundColor Green
+Write-Host "======================" -ForegroundColor Green
 Write-Host ""
 
-# Imprimir Outputs Amigaveis
 if ($LB_URL) {
-    Write-Host "Sua API esta no ar! 🎉" -ForegroundColor Green
-    Write-Host "-------------------------"
-    Write-Host "Base URL: " -NoNewline; Write-Host "http://$LB_URL" -ForegroundColor Cyan
-    Write-Host "Swagger:  " -NoNewline; Write-Host "http://$LB_URL/swagger/index.html" -ForegroundColor Cyan
-    Write-Host "Health:"
-    Write-Host "  - Live: " -NoNewline; Write-Host "http://$LB_URL/health/live" -ForegroundColor Cyan
-    Write-Host "  - Ready:" -NoNewline; Write-Host "http://$LB_URL/health/ready" -ForegroundColor Cyan
-    Write-Host ""
+    Write-Host "API URL: " -NoNewline -ForegroundColor Yellow
+    Write-Host "http://$LB_URL/api/v1/docs" -ForegroundColor Cyan
 } else {
-    Write-Warning "Aguarde o Load Balancer ficar online para acessar a API."
-    Write-Info "Use 'terraform output api_url' para obter a URL em alguns minutos."
-    Write-Host ""
+    Write-Host "LoadBalancer ainda provisionando..." -ForegroundColor Yellow
+    Write-Host "Execute em alguns minutos:" -ForegroundColor White
+    Write-Host "  kubectl get svc -n mecanicaos" -ForegroundColor Cyan
 }
+
+Write-Host ""
+Write-Host "OBSERVABILIDADE (OpenTelemetry):" -ForegroundColor Green
+Write-Host "================================" -ForegroundColor Green
+Write-Host "OTEL Collector: " -NoNewline -ForegroundColor Yellow
+Write-Host "otel-collector.observability:4317 (gRPC) / :4318 (HTTP)" -ForegroundColor Cyan
+Write-Host "Exporters:      " -NoNewline -ForegroundColor Yellow
+Write-Host "Datadog + New Relic" -ForegroundColor Cyan
+Write-Host ""
+Write-Host "Dashboards:" -ForegroundColor Yellow
+Write-Host "  Datadog:    https://app.datadoghq.com/apm/traces" -ForegroundColor White
+Write-Host "  New Relic:  https://one.newrelic.com/distributed-tracing" -ForegroundColor White
+
+Write-Host ""
+Write-Host "COMANDOS UTEIS:" -ForegroundColor Green
+Write-Host "===============" -ForegroundColor Green
+Write-Host "Ver pods API:         kubectl get pods -n mecanicaos" -ForegroundColor White
+Write-Host "Ver logs API:         kubectl logs -n mecanicaos -l app=mecanicaos-api" -ForegroundColor White
+Write-Host "Ver pods OTEL:        kubectl get pods -n observability" -ForegroundColor White
+Write-Host "Ver logs OTEL:        kubectl logs -n observability -l app=otel-collector" -ForegroundColor White
+Write-Host "Ver services:         kubectl get svc -A" -ForegroundColor White
+Write-Host "Destruir tudo:        .\deploy-completo.ps1 -Destroy" -ForegroundColor White
+Write-Host ""

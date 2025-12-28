@@ -5,36 +5,14 @@
 resource "aws_eks_cluster" "eks" {
   name = "eks-${var.project_name}"
 
-  # Modo de autenticação da API. "API" é usado no AWS Academy,
-  # enquanto "CONFIG_MAP" seria para contas normais com maior controle.
+  # Modo de autenticação API (necessário para AWS Academy)
   access_config {
     authentication_mode = "API"
   }
 
-  # Utiliza a role ARN determinada pela lógica em locals.tf.
-  # Isso seleciona dinamicamente entre a role do Academy e a fornecida para contas normais.
-  role_arn = local.eks_cluster_role_arn
-  version  = var.eks_cluster_version
-
-  # Validações de Ciclo de Vida:
-  # Garante que as premissas para a criação do cluster sejam atendidas.
-  lifecycle {
-    # 1. Valida se a role do AWS Academy foi encontrada.
-    precondition {
-      condition     = local.error_message_cluster_role == ""
-      error_message = local.error_message_cluster_role
-    }
-
-    # 2. Valida se a policy 'AmazonEKSClusterPolicy' está anexada (apenas para contas normais).
-    precondition {
-      # A validação só ocorre se NÃO estivermos no Academy e a verificação da policy foi executada.
-      condition     = local.is_academy ? true : (
-        length(data.aws_iam_role_policy_attachment.cluster_policy_check) > 0 &&
-        data.aws_iam_role_policy_attachment.cluster_policy_check[0].policy_arn != null
-      )
-      error_message = "ERRO: A role do cluster (${var.eks_cluster_role_name}) nao tem a policy 'AmazonEKSClusterPolicy' anexada. Esta policy e essencial para o EKS."
-    }
-  }
+  # Usando role do AWS Academy
+  role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.eks_cluster_role_name}"
+  version  = "1.31"
 
   vpc_config {
     subnet_ids         = aws_subnet.public[*].id

@@ -1,3 +1,0 @@
-ERRO: Multiplas 'LabRole's foram encontradas nesta conta.
-Para evitar ambiguidades e problemas de permissao, o deploy foi interrompido.
-Por favor, verifique o IAM no console da AWS e garanta que exista apenas uma 'LabRole' para este ambiente.

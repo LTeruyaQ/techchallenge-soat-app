@@ -1,3 +1,0 @@
-ERRO: Nenhuma 'LabRole' foi encontrada nesta conta.
-Esta role e essencial para permitir o acesso do usuario do AWS Academy ao cluster EKS.
-Verifique se voce esta na conta correta do AWS Academy e se a role 'LabRole' existe no IAM.
