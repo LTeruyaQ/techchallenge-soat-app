@@ -8,7 +8,7 @@ eks_node_role_name    = "c190909a4920103l13171091t1w339713065-LabEksNodeRole-Iyw
 
 # ECR
 docker_image_repo = "mecanicaos-ecr"
-docker_image_tag  = "20251216-195056"
+docker_image_tag  = "20251229-100732"
 # docker_image_tag é gerado automaticamente pelo deploy-completo.ps1
 
 # Kubernetes
@@ -32,5 +32,15 @@ otel_service_name           = "mecanicaos-api"
 otel_exporter_otlp_endpoint = "http://otel-collector.observability:4317"
 datadog_api_key             = "e0f3dea9093bbb0e07c8a113afb986d3"
 newrelic_license_key        = "f744030d61e4cf2b9c652cdca9024fe2FFFFNRAL"
+
+
+
+
+
+
+
+
+
+
 
 

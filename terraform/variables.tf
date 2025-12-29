@@ -44,20 +44,20 @@ variable "availability_zones" {
 # Variáveis IAM - AWS Academy
 # ============================================
 #
-# IMPORTANTE: Copie os nomes exatos das roles do seu AWS Academy Lab
-# Você encontra em: IAM > Roles > Procure por "LabEks"
+# IMPORTANTE:
+# Essas variáveis NÃO possuem default.
+# O script de deploy detecta automaticamente
+# e exporta via TF_VAR_eks_cluster_role e TF_VAR_eks_node_role
 #
 
-variable "eks_cluster_role_name" {
-  description = "Nome da LabEksClusterRole do AWS Academy (copie do console AWS)"
+variable "eks_cluster_role" {
+  description = "IAM Role do Cluster EKS detectada automaticamente pelo script"
   type        = string
-  # Exemplo: "c175509a4540172l11442646t1w891377-LabEksClusterRole-QQH0SV203Gtw"
 }
 
-variable "eks_node_role_name" {
-  description = "Nome da LabEksNodeRole do AWS Academy (copie do console AWS)"
+variable "eks_node_role" {
+  description = "IAM Role do NodeGroup do EKS detectada automaticamente pelo script"
   type        = string
-  # Exemplo: "c175509a4540172l11442646t1w891377135-LabEksNodeRole-r3HYcSAYWMXX"
 }
 
 # ============================================
