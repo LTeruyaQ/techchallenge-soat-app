@@ -18,43 +18,28 @@ RUN dotnet publish "API.csproj" -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Download and install the Tracer
-RUN apt-get update \
-    && apt-get install -y curl dpkg \
-    && mkdir -p /opt/datadog \
-    && mkdir -p /var/log/datadog \
-    && TRACER_VERSION=$(curl -s https://api.github.com/repos/DataDog/dd-trace-dotnet/releases/latest | grep tag_name | cut -d '"' -f 4 | cut -c2-) \
-    && curl -LO https://github.com/DataDog/dd-trace-dotnet/releases/download/v${TRACER_VERSION}/datadog-dotnet-apm_${TRACER_VERSION}_amd64.deb \
-    && dpkg -i ./datadog-dotnet-apm_${TRACER_VERSION}_amd64.deb \
-    && rm ./datadog-dotnet-apm_${TRACER_VERSION}_amd64.deb
+RUN apt-get update && apt-get install -y ca-certificates
 
-# Enable the tracer
-ENV CORECLR_ENABLE_PROFILING=1
-ENV CORECLR_PROFILER={846F5F1C-F9AE-4B07-969E-05C26BC060D8}
-ENV CORECLR_PROFILER_PATH=/opt/datadog/Datadog.Trace.ClrProfiler.Native.so
-ENV DD_DOTNET_TRACER_HOME=/opt/datadog
+# Datadog Serverless Init + .NET Tracer
+COPY --from=datadog/serverless-init:1 /datadog-init /app/datadog-init
+COPY --from=datadog/dd-lib-dotnet-init /datadog-init/monitoring-home/ /dd_tracer/dotnet/
+
+# Datadog config
+ENV DD_SITE="datadoghq.com"
+ENV DD_HOSTNAME="mecanicaos-api"
 ENV DD_ENV="staging"
 ENV DD_SERVICE="mecanicaos-api"
 ENV DD_VERSION="1.0.0"
-ENV DD_APPSEC_ENABLED=true
-ENV DD_APPSEC_SCA_ENABLED=true
-ENV DD_IAST_ENABLED=true
 ENV DD_LOGS_INJECTION=true
-ENV DD_LOGS_ENABLED=true
-ENV DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
-ENV DD_CONTAINER_EXCLUDE="name:datadog-agent"
-ENV DD_TRACE_ANALYTICS_ENABLED=true
+ENV DD_APPSEC_ENABLED=true
+ENV DD_IAST_ENABLED=true
+ENV DD_APPSEC_SCA_ENABLED=true
 
-# Copia os arquivos publicados
 COPY --from=build /app/publish .
-
-# Garante que os templates de e-mail estejam presentes
 COPY --from=build /src/MecanicaOS/API/Templates ./Templates
 
-# Expondo a porta padrão do Kestrel
 EXPOSE 80
-
-# Variável de ambiente para ASP.NET Core
 ENV ASPNETCORE_URLS=http://+:80
 
-ENTRYPOINT ["dotnet", "API.dll"]
+ENTRYPOINT ["/app/datadog-init"]
+CMD ["dotnet", "API.dll"]
