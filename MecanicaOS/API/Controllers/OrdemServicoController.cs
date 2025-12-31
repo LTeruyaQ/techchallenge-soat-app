@@ -100,6 +100,19 @@ namespace API.Controllers
             return Ok(insumosOS);
         }
 
+        [HttpGet("test-error")]
+        [AllowAnonymous]
+        [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> TestError()
+        {
+            var errorResponse = new ErrorResponse
+            {
+                Message = "Erro forçado para teste de monitoramento Datadog",
+            };
+
+            return StatusCode(StatusCodes.Status500InternalServerError, errorResponse);
+        }
+
         [HttpPatch("{id}/aceitar-orcamento")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]

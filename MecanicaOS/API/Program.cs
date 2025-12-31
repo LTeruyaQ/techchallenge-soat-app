@@ -5,6 +5,7 @@ using API.Notificacoes.OS;
 using Core.DTOs.Config;
 using Core.Interfaces.root;
 using Core.Interfaces.Servicos;
+using Datadog.Trace.Configuration;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Infraestrutura.Dados;
@@ -16,16 +17,24 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
+using Serilog.Formatting.Compact;
+using Serilog.Formatting.Json;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json.Serialization;
-using OpenTelemetry.Metrics;
-using OpenTelemetry.Resources;
-using OpenTelemetry.Trace;
-using Serilog;
-using Datadog.Trace.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
+
+#region Serilog
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .WriteTo.Console(new JsonFormatter())
+    .WriteTo.Console(new RenderedCompactJsonFormatter())
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+#endregion
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -110,49 +119,10 @@ builder.Services.AddAuthorization(options =>
 
 builder.Services.AddHttpContextAccessor();
 
-#region OpenTelemetry
-var otelServiceName = Environment.GetEnvironmentVariable("OTEL_SERVICE_NAME") ?? "mecanicaos-api";
-var otelEnvironment = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "development";
-var otelExporterEndpoint = Environment.GetEnvironmentVariable("OTEL_EXPORTER_OTLP_ENDPOINT") ?? "http://localhost:4317";
-
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource
-        .AddService(
-            serviceName: otelServiceName,
-            serviceVersion: "1.0.0")
-        .AddAttributes(new Dictionary<string, object>
-        {
-            ["deployment.environment"] = otelEnvironment,
-            ["service.namespace"] = "mecanicaos"
-        }))
-    .WithTracing(tracing => tracing
-        .AddAspNetCoreInstrumentation(options =>
-        {
-            options.RecordException = true;
-        })
-        .AddHttpClientInstrumentation()
-        .AddOtlpExporter(options =>
-        {
-            options.Endpoint = new Uri(otelExporterEndpoint);
-        }))
-    .WithMetrics(metrics => metrics
-        .AddAspNetCoreInstrumentation()
-        .AddHttpClientInstrumentation()
-        .AddRuntimeInstrumentation()
-        .AddOtlpExporter(options =>
-        {
-            options.Endpoint = new Uri(otelExporterEndpoint);
-        }));
-#endregion
-
-#region Serilog
-Log.Logger = new LoggerConfiguration()
-    .MinimumLevel.Information()
-    .Enrich.FromLogContext()
-    .WriteTo.Console()
-    .CreateLogger();
-
-builder.Host.UseSerilog();
+#region Datadog APM
+var settings = TracerSettings.FromDefaultSources();
+settings.AnalyticsEnabled = true;
+Datadog.Trace.Tracer.Configure(settings);
 #endregion
 
 #region Infraestrutura
@@ -204,50 +174,51 @@ builder.Services.AddResponseCompression(options =>
 
 var app = builder.Build();
 
-app.UseResponseCompression();
-
-app.UsePathBase(new PathString("/api/v1"));
-
-app.UseRouting();
-
 #region Middleware p/ rastrear e Logar requisições HTTP
 app.Use(async (context, next) =>
 {
-    var tracer = Datadog.Trace.Tracer.Instance;
-    using var scope = tracer.StartActive("http.request");
-    var span = scope.Span;
-    var requestInfo = $"Handling request: {context.Request.Method} {context.Request.Path}";
-    Log.Information(requestInfo);
-    span.SetTag("http.method", context.Request.Method);
-    span.SetTag("http.url", context.Request.Path);
+    var span = Datadog.Trace.Tracer.Instance.ActiveScope?.Span;
 
     try
     {
         await next.Invoke();
 
-        span.SetTag("http.status_code", context.Response.StatusCode.ToString());
+        var statusCode = context.Response.StatusCode;
+        span?.SetTag("http.status_code", statusCode.ToString());
 
-        if (context.Response.StatusCode >= 400)
+        if (statusCode >= 500)
         {
-            span.SetTag("error", "true");
-            Log.Error("Erro with Status Code: {StatusCode}: {Method} {Path}", context.Response.StatusCode, context.Request.Method, context.Request.Path);
+            span.Error = true;
+            Log.Error("Erro de Servidor: {Method} {Path} retornou {Status}",
+                      context.Request.Method, context.Request.Path, statusCode);
+        }
+        else if (statusCode >= 400)
+        {
+            span?.SetTag("app.business_status", "warning");
+
+            Log.Warning("Aviso de Negócio: {Method} {Path} retornou {Status}",
+                        context.Request.Method, context.Request.Path, statusCode);
+        }
+        else
+        {
+            Log.Information("Sucesso: {Method} {Path} Status {Status}",
+                            context.Request.Method, context.Request.Path, statusCode);
         }
     }
     catch (Exception ex)
     {
-        span.SetTag("error", "true");
-        span.SetTag("error.message", ex.Message);
-        span.SetTag("error.stack", ex.StackTrace);
-        Log.Error(ex, "Unhandled exception while processing request: {Method} {Path}", context.Request.Method, context.Request.Path);
+        span?.SetException(ex);
+        Log.Error(ex, "Exceção Crítica na URL {Path}", context.Request.Path);
         throw;
-    }
-    finally
-    {
-        span.Finish();
-        Log.Information($"Finished handling request: {context.Request.Method} {context.Request.Path} with status {context.Response.StatusCode}");
     }
 });
 #endregion
+
+app.UseResponseCompression();
+
+app.UsePathBase(new PathString("/api/v1"));
+
+app.UseRouting();
 
 // Adiciona autenticação e autorização ao pipeline
 app.UseAuthentication();

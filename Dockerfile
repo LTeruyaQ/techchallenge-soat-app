@@ -30,10 +30,15 @@ ENV DD_HOSTNAME="mecanicaos-api"
 ENV DD_ENV="staging"
 ENV DD_SERVICE="mecanicaos-api"
 ENV DD_VERSION="1.0.0"
-ENV DD_LOGS_INJECTION=true
 ENV DD_APPSEC_ENABLED=true
+ENV DD_APM_ENABLED=true
 ENV DD_IAST_ENABLED=true
 ENV DD_APPSEC_SCA_ENABLED=true
+ENV DD_LOGS_INJECTION=true
+ENV DD_LOGS_ENABLED=true
+ENV DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+ENV DD_CONTAINER_EXCLUDE="name:datadog-agent"
+ENV DD_APM_IGNORE_RESOURCES="(?i)hangfire"
 
 COPY --from=build /app/publish .
 COPY --from=build /src/MecanicaOS/API/Templates ./Templates
