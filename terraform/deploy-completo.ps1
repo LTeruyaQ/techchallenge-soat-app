@@ -58,6 +58,16 @@ function Invoke-CommandAndCheck {
 }
 
 # ======================================================
+# ETAPA -1: LIMPEZA DE CACHE (Garante execução limpa)
+# ======================================================
+Write-Title "ETAPA -1: Limpando Cache do Terraform"
+Write-Step "Removendo diretório .terraform/ e arquivo .terraform.lock.hcl..."
+Remove-Item -Path ".\.terraform" -Recurse -Force -ErrorAction SilentlyContinue
+Remove-Item -Path ".\.terraform.lock.hcl" -Force -ErrorAction SilentlyContinue
+Write-Success "Cache do Terraform local foi limpo."
+
+
+# ======================================================
 # ETAPA 0: SANITY CHECK
 # ======================================================
 Write-Title "ETAPA 0: Sanity Check do Ambiente"

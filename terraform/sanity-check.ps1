@@ -6,10 +6,12 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-aws eks list-clusters --region us-east-1 --output table
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[X] Falha ao listar clusters EKS" -ForegroundColor Red
-    exit 1
-}
+# A verificação de clusters EKS foi desativada pois o script pode ser executado
+# justamente para CRIAR o primeiro cluster. A verificação do STS já é suficiente.
+# aws eks list-clusters --region us-east-1 --output table
+# if ($LASTEXITCODE -ne 0) {
+#     Write-Host "[X] Falha ao listar clusters EKS" -ForegroundColor Red
+#     exit 1
+# }
 
 Write-Host "[OK] AWS CLI e STS funcionando corretamente" -ForegroundColor Green

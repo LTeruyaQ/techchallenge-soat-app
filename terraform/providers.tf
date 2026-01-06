@@ -28,21 +28,34 @@ provider "aws" {
   skip_requesting_account_id  = false
 }
 
-# =========================
-# KUBERNETES PROVIDERS
-# =========================
-# Observação: os data sources aws_eks_cluster e aws_eks_cluster_auth
-# devem existir apenas em data.tf (não duplicar aqui).
+# ===================================================================
+# KUBERNETES & KUBECTL PROVIDERS (COM DEPENDÊNCIA EXPLÍCITA DO EKS)
+# ===================================================================
+# Esta é a configuração CORRETA.
+# Os provedores obtêm os dados de conexão diretamente do RECURSO 'aws_eks_cluster.eks'.
+# Isso garante que o Terraform só tentará se conectar ao cluster DEPOIS que ele for criado.
+# A autenticação é feita de forma dinâmica usando o AWS CLI.
+
 provider "kubernetes" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.auth.token
-  load_config_file       = false
+  host                   = aws_eks_cluster.eks.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.eks.certificate_authority[0].data)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    # O 'args' constrói o comando: aws eks get-token --cluster-name <nome-do-cluster>
+    args = ["eks", "get-token", "--cluster-name", aws_eks_cluster.eks.name]
+  }
 }
 
 provider "kubectl" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.auth.token
-  load_config_file       = false
+  # A configuração é idêntica para o provider kubectl.
+  host                   = aws_eks_cluster.eks.endpoint
+  cluster_ca_certificate = base64decode(aws_eks_cluster.eks.certificate_authority[0].data)
+
+  exec {
+    api_version = "client.authentication.k8s.io/v1beta1"
+    command     = "aws"
+    args        = ["eks", "get-token", "--cluster-name", aws_eks_cluster.eks.name]
+  }
 }
