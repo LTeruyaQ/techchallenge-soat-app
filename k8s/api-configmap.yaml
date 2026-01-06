@@ -6,7 +6,6 @@ metadata:
 data:
   ASPNETCORE_ENVIRONMENT: "${environment}"
   ASPNETCORE_URLS: "http://+:80"
-  ConnectionStrings__DefaultConnection: "${db_connection_string}"
   Jwt__Issuer: "${jwt_issuer}"
   Jwt__Audience: "${jwt_audience}"
   Jwt__ExpiryInMinutes: "${jwt_expiry_minutes}"

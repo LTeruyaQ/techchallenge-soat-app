@@ -1,224 +1,200 @@
-# ============================================
+# ===================================================================
 # Script de Deploy COMPLETO - MecanicaOS (AWS Academy)
-# Com Sanity Check obrigatório
-# ============================================
+#
+# Orquestra o deploy de ponta a ponta:
+# 1. Build e Push da imagem Docker para o ECR.
+# 2. Deploy da infraestrutura com Terraform (VPC, EKS, RDS, Lambda, API GW).
+# 3. Deploy da aplicação no Kubernetes.
+# ===================================================================
 
 param(
-    [switch]$SkipBuild,
-    [switch]$SkipInfra,
     [switch]$Destroy,
-    [switch]$Plan,
-    [string]$AWS_REGION = "us-east-1",
-    [string]$ECR_REPO_NAME = "mecanicaos-ecr"
+    [string]$AwsRegion = "us-east-1"
 )
 
+# Encerra o script em caso de erro
 $ErrorActionPreference = "Stop"
 
 # ======================================================
 # FUNÇÕES DE LOG
 # ======================================================
-
-function Write-Title($msg) {
-    Write-Host ""
-    Write-Host "============================================" -ForegroundColor Cyan
-    Write-Host " $msg" -ForegroundColor Cyan
-    Write-Host "============================================" -ForegroundColor Cyan
-}
-function Write-Step($msg)     { Write-Host "`n==> $msg" -ForegroundColor Yellow }
-function Write-Success($msg)  { Write-Host "[OK] $msg" -ForegroundColor Green }
-function Write-Warning($msg)  { Write-Host "[!] $msg" -ForegroundColor Yellow }
+function Write-Title($msg) { Write-Host "`n============================================" -ForegroundColor Cyan; Write-Host " $msg" -ForegroundColor Cyan; Write-Host "============================================" -ForegroundColor Cyan }
+function Write-Step($msg)  { Write-Host "`n==> $msg" -ForegroundColor Yellow }
+function Write-Success($msg) { Write-Host "[OK] $msg" -ForegroundColor Green }
 function Write-ErrorMsg($msg) { Write-Host "[X] $msg" -ForegroundColor Red }
-function Write-Info($msg)     { Write-Host "    $msg" -ForegroundColor Gray }
+function Write-Info($msg)  { Write-Host "    $msg" }
 
 # ======================================================
-# ETAPA 0: SANITY CHECK
+# ETAPA 0: VERIFICAÇÃO DE PRÉ-REQUISITOS
 # ======================================================
+Write-Title "ETAPA 0: Verificando Pré-requisitos"
 
-Write-Title "ETAPA 0: Sanity Check do Ambiente"
-
-if (-not (Test-Path ".\sanity-check.ps1")) {
-    Write-ErrorMsg "sanity-check.ps1 não encontrado"
-    exit 1
-}
-
-try {
-    Write-Step "Executando sanity-check.ps1"
-    .\sanity-check.ps1
-    Write-Success "Sanity check passou"
-} catch {
-    Write-ErrorMsg "Sanity check falhou"
-    throw
-}
-
-# ======================================================
-# ETAPA 1: PRÉ-REQUISITOS
-# ======================================================
-
-Write-Title "ETAPA 1: Verificando Pré-requisitos"
-
-foreach ($cmd in @("aws", "terraform", "kubectl", "docker")) {
+$requiredCommands = @("aws", "terraform", "kubectl", "docker")
+foreach ($cmd in $requiredCommands) {
     if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
-        Write-ErrorMsg "$cmd não encontrado no PATH"
+        Write-ErrorMsg "$cmd não encontrado no PATH. Por favor, instale-o."
         exit 1
     }
 }
-
-try {
-    docker info | Out-Null
-    Write-Success "Docker rodando"
-} catch {
-    Write-ErrorMsg "Docker não está rodando"
-    exit 1
-}
+Write-Success "Todas as ferramentas necessárias estão instaladas."
 
 # ======================================================
-# ETAPA 2: CREDENCIAIS AWS
+# ETAPA 1: MODO DESTROY
 # ======================================================
-
-Write-Title "ETAPA 2: Validando Credenciais AWS"
-
-try {
-    $identity = aws sts get-caller-identity --output json | ConvertFrom-Json
-    $AWS_ACCOUNT_ID = $identity.Account
-    Write-Success "AWS Account ID: $AWS_ACCOUNT_ID"
-} catch {
-    Write-ErrorMsg "Credenciais AWS inválidas"
-    exit 1
-}
-
-# ======================================================
-# ETAPA 3: TFVARS / MODOS
-# ======================================================
-
-Write-Title "ETAPA 3: Validando terraform.tfvars"
-
-if (-not (Test-Path "terraform.tfvars")) {
-    Write-ErrorMsg "terraform.tfvars não encontrado"
-    exit 1
-}
-
 if ($Destroy) {
     Write-Title "MODO DESTROY"
-    terraform init
+    Write-Step "Executando terraform destroy..."
+
+    # Limpa o cache local do Terraform
+    Remove-Item -Path ".terraform", ".terraform.lock.hcl" -Recurse -Force -ErrorAction SilentlyContinue
+
+    terraform init -reconfigure
     terraform destroy -auto-approve
-    exit 0
-}
 
-if ($Plan) {
-    Write-Title "MODO PLAN"
-    terraform init
-    terraform plan
+    Write-Success "Infraestrutura destruída."
     exit 0
 }
 
 # ======================================================
-# ETAPA 4: BUILD COM KANIKO
+# ETAPA 2: BUILD & PUSH DA IMAGEM DOCKER
 # ======================================================
+Write-Title "ETAPA 2: Build e Push da Imagem Docker"
 
-if (-not $SkipBuild) {
-
-    Write-Title "ETAPA 4: Garantindo ECR"
-    terraform init
-    terraform apply -target=aws_ecr_repository.app -auto-approve
-
-    Write-Title "ETAPA 5: Build com Kaniko"
-
-    $GITHUB_USER = "LTeruyaQ"
-    $REPO_NAME   = "techchallenge-soat-app"
-    $env:GIT_TOKEN = "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"
-
-    if (-not $env:GIT_TOKEN) {
-        Write-ErrorMsg "Defina a variável de ambiente GIT_TOKEN"
-        exit 1
-    }
-
-    $IMAGE_TAG = Get-Date -Format "yyyyMMdd-HHmmss"
-    $ECR_URI   = "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME"
-    $JOB_NAME  = "kaniko-build-$IMAGE_TAG"
-    $NAMESPACE = "build"
-
-    kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
-
-    kubectl delete secret aws-creds -n $NAMESPACE --ignore-not-found | Out-Null
-    kubectl create secret generic aws-creds `
-        -n $NAMESPACE `
-        --from-literal=AWS_ACCESS_KEY_ID=$env:AWS_ACCESS_KEY_ID `
-        --from-literal=AWS_SECRET_ACCESS_KEY=$env:AWS_SECRET_ACCESS_KEY `
-        --from-literal=AWS_DEFAULT_REGION=$AWS_REGION | Out-Null
-
-    Write-Step "Criando Job Kaniko"
-
-$jobYaml = @"
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: $JOB_NAME
-  namespace: $NAMESPACE
-spec:
-  backoffLimit: 0
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-      - name: kaniko
-        image: gcr.io/kaniko-project/executor:latest
-        envFrom:
-        - secretRef:
-            name: aws-creds
-        args:
-        - "--context=git://github.com/$GITHUB_USER/$REPO_NAME.git"
-        - "--dockerfile=Dockerfile"
-        - "--destination=${ECR_URI}:$IMAGE_TAG"
-        - "--destination=${ECR_URI}:latest"
-"@
-
-    $jobYaml | kubectl apply -f -
-
-    Write-Success "Job Kaniko submetido"
+# Obtém informações da conta AWS
+try {
+    $callerIdentity = aws sts get-caller-identity --output json | ConvertFrom-Json
+    $awsAccountId = $callerIdentity.Account
+    Write-Success "AWS Account ID: $awsAccountId"
+} catch {
+    Write-ErrorMsg "Credenciais AWS inválidas. Configure suas credenciais e tente novamente."
+    exit 1
 }
 
-# ======================================================
-# ETAPA 6: INFRA (EKS)
-# ======================================================
+$ecrRepoName = "mecanicaos-ecr"
+$ecrRepoUrl = "${awsAccountId}.dkr.ecr.${AwsRegion}.amazonaws.com/${ecrRepoName}"
+$imageTag = (git rev-parse --short HEAD)
 
-if (-not $SkipInfra) {
+# Login no ECR
+Write-Step "Autenticando Docker no ECR..."
+aws ecr get-login-password --region $AwsRegion | docker login --username AWS --password-stdin $ecrRepoUrl
+Write-Success "Login no ECR bem-sucedido."
 
-    Write-Title "ETAPA 6: Deploy Terraform"
-
-    $clusterRole = aws iam list-roles --query "Roles[?contains(RoleName,'LabEksClusterRole')].RoleName | [0]" --output text
-    $nodeRole    = aws iam list-roles --query "Roles[?contains(RoleName,'LabEksNodeRole')].RoleName | [0]" --output text
-
-    if (-not $clusterRole -or -not $nodeRole) {
-        Write-ErrorMsg "Roles do EKS não encontradas (AWS Academy)"
-        exit 1
-    }
-
-    $env:TF_VAR_eks_cluster_role = $clusterRole
-    $env:TF_VAR_eks_node_role    = $nodeRole
-
-    terraform init
-    terraform validate
-    terraform apply -auto-approve
+# Cria o repositório ECR se não existir
+Write-Step "Verificando/Criando repositório ECR..."
+try {
+    aws ecr describe-repositories --repository-names $ecrRepoName --region $AwsRegion | Out-Null
+    Write-Success "Repositório ECR '$ecrRepoName' já existe."
+} catch {
+    aws ecr create-repository --repository-name $ecrRepoName --region $AwsRegion | Out-Null
+    Write-Success "Repositório ECR '$ecrRepoName' criado."
 }
 
+# Build da imagem
+Write-Step "Construindo a imagem Docker (Tag: $imageTag)..."
+cd .. # Sobe para a raiz do projeto para encontrar o Dockerfile
+docker build -t "${ecrRepoUrl}:${imageTag}" .
+docker tag "${ecrRepoUrl}:${imageTag}" "${ecrRepoUrl}:latest"
+cd terraform # Volta para o diretório do terraform
+Write-Success "Build da imagem concluído."
+
+# Push para o ECR
+Write-Step "Enviando a imagem para o ECR..."
+docker push "${ecrRepoUrl}:${imageTag}"
+docker push "${ecrRepoUrl}:latest"
+Write-Success "Push para o ECR concluído."
+
 # ======================================================
-# ETAPA 7: KUBECONFIG
+# ETAPA 3: DEPLOY DA INFRAESTRUTURA (TERRAFORM)
 # ======================================================
+Write-Title "ETAPA 3: Deploy da Infraestrutura com Terraform"
 
-Write-Title "ETAPA 7: Configurando kubectl"
+# Limpa o cache local do Terraform para garantir um estado limpo
+Remove-Item -Path ".terraform", ".terraform.lock.hcl" -Recurse -Force -ErrorAction SilentlyContinue
 
-$EKS_CLUSTER_NAME = terraform output -raw eks_cluster_name
-aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+Write-Step "Executando terraform init..."
+terraform init -reconfigure
 
-Write-Success "kubectl configurado"
+Write-Step "Executando terraform apply..."
+$tfVars = @{
+    "docker_image_repo" = $ecrRepoUrl
+    "docker_image_tag" = $imageTag
+}
+
+# Converte o hashtable para uma string de argumentos -var
+$varString = $tfVars.GetEnumerator() | ForEach-Object { "-var='$($_.Key)=$($_.Value)'" } | Join-String -Separator " "
+
+terraform apply -auto-approve $varString
+Write-Success "Infraestrutura implantada com sucesso."
 
 # ======================================================
-# ETAPA 8: VERIFICAÇÃO FINAL
+# ETAPA 4: CONFIGURAÇÃO DO KUBECTL
 # ======================================================
+Write-Title "ETAPA 4: Configurando Kubeconfig"
 
-Write-Title "ETAPA 8: Verificação Final"
+$eksClusterName = terraform output -raw eks_cluster_name
+aws eks update-kubeconfig --region $AwsRegion --name $eksClusterName
+Write-Success "Kubeconfig atualizado para o cluster '$eksClusterName'."
 
-kubectl get pods -A
-kubectl get svc  -A
+# ======================================================
+# ETAPA 5: DEPLOY DA APLICAÇÃO NO KUBERNETES
+# ======================================================
+Write-Title "ETAPA 5: Deploy da Aplicação no Kubernetes"
 
-Write-Success "Deploy finalizado com sucesso"
+# Obtém a connection string do RDS a partir do output do Terraform
+$dbPassword = terraform output -raw rds_master_password
+$dbHost = terraform output -raw rds_hostname
+$dbPort = terraform output -raw rds_port
+$dbUsername = terraform output -raw rds_username
+$dbName = "postgres" # Nome padrão do banco de dados no módulo RDS
+
+$connectionString = "Host=${dbHost};Port=${dbPort};Database=${dbName};Username=${dbUsername};Password=${dbPassword}"
+
+# Cria o namespace 'mecanicaos' se não existir
+Write-Step "Garantindo que o namespace 'mecanicaos' existe..."
+kubectl apply -f ../k8s/namespace.yaml
+
+# Cria ou atualiza o secret com a connection string
+Write-Step "Criando/Atualizando o secret 'api-secret'..."
+kubectl create secret generic api-secret `
+    --from-literal=ConnectionStrings__DefaultConnection=$connectionString `
+    --namespace=mecanicaos `
+    --dry-run=client -o yaml | kubectl apply -f -
+
+# Aplica os manifestos do Kubernetes
+Write-Step "Aplicando manifestos Kubernetes..."
+$k8sDir = "..\k8s"
+
+# Substitui o placeholder da imagem no deployment
+$deploymentTemplate = Get-Content -Path "$k8sDir\api-deployment.yaml" -Raw
+$deploymentContent = $deploymentTemplate -replace '\${docker_image}', "${ecrRepoUrl}:${imageTag}"
+
+# Aplica os manifestos restantes
+Get-ChildItem -Path $k8sDir -Filter "*.yaml" | ForEach-Object {
+    if ($_.Name -ne "api-deployment.yaml" -and $_.Name -ne "namespace.yaml") {
+        kubectl apply -f $_.FullName
+    }
+}
+
+# Aplica o deployment modificado
+$deploymentContent | kubectl apply -f -
+
+Write-Success "Aplicação implantada no Kubernetes."
+
+# ======================================================
+# ETAPA 6: INFORMAÇÕES FINAIS
+# ======================================================
+Write-Title "ETAPA 6: Deploy Concluído!"
+
+$apiUrl = terraform output -raw api_gateway_invoke_url
+$swaggerUrl = "${apiUrl}/docs/v1/swagger.json" # Corrigir a URL do swagger
+
+Write-Host "URL da API Gateway:" -ForegroundColor Green
+Write-Host $apiUrl
+
+Write-Host "`nSwagger UI:" -ForegroundColor Green
+Write-Host "${apiUrl}/docs" # URL correta da UI
+
+Write-Host "`n--------------------------------------------------"
+Write-Host "Aguarde alguns minutos para que o Load Balancer e os pods sejam inicializados."
+Write-Host "Use 'kubectl get pods -n mecanicaos -w' para monitorar."
+Write-Host "--------------------------------------------------"
