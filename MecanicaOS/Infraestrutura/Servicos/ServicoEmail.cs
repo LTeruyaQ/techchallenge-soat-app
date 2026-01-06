@@ -18,7 +18,7 @@ public class ServicoEmail : IServicoEmail
     {
         var client = new SendGridClient(_apiKey);
 
-        var remetente = new EmailAddress("mecanicaosbr@gmail.com", "MecânicaOS");
+        var remetente = new EmailAddress("mecanicaosbr@gmail.com", "MecanicaOS");
 
         var destinatarios = emailsDestino
         .Select(email => new EmailAddress(email))
@@ -34,12 +34,5 @@ public class ServicoEmail : IServicoEmail
         );
 
         var response = await client.SendEmailAsync(msg);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            var body = await response.Body.ReadAsStringAsync();
-
-            throw new Exception($"Erro ao enviar email: {response.StatusCode} - {body}");
-        }
     }
 }

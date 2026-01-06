@@ -5,6 +5,7 @@ using Core.Exceptions;
 using Core.Interfaces.Gateways;
 using Core.Interfaces.Handlers.OrdensServico;
 using Core.UseCases.Abstrato;
+using Datadog.Trace;
 
 namespace Core.UseCases.OrdensServico.AtualizarOrdemServico
 {
@@ -42,7 +43,21 @@ namespace Core.UseCases.OrdensServico.AtualizarOrdemServico
                     ordemServico.Descricao = request.Descricao;
 
                 if (request.Status.HasValue)
+                {
                     ordemServico.Status = request.Status.Value;
+                    
+                    var span = Tracer.Instance.ActiveScope?.Span;
+
+                    span?.SetTag("ordem.status", ordemServico.Status.ToString());
+
+                    DateTime dataReferencia = ordemServico.DataAtualizacao ?? ordemServico.DataCadastro;
+
+                    var tempoNoStatusAnterior = DateTime.UtcNow - dataReferencia;
+                    double minutosDecorridos = tempoNoStatusAnterior.TotalMinutes;
+
+                    span?.SetTag("ordem.tempo_no_status_anterior", minutosDecorridos);
+                    span?.SetTag("ordem.status_que_encerrou", statusAnterior.ToString());
+                }
 
                 if (request.Orcamento.HasValue)
                     ordemServico.Orcamento = request.Orcamento.Value;

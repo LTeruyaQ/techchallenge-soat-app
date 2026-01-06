@@ -1,5 +1,5 @@
 # Etapa 1: Build
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # Copia os arquivos de projeto e restaura dependências
@@ -15,19 +15,36 @@ WORKDIR "/src/MecanicaOS/API"
 RUN dotnet publish "API.csproj" -c Release -o /app/publish
 
 # Etapa 2: Runtime
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Copia os arquivos publicados
-COPY --from=build /app/publish .
+RUN apt-get update && apt-get install -y ca-certificates
 
-# Garante que os templates de e-mail estejam presentes
+# Datadog Serverless Init + .NET Tracer
+COPY --from=datadog/serverless-init:1 /datadog-init /app/datadog-init
+COPY --from=datadog/dd-lib-dotnet-init /datadog-init/monitoring-home/ /dd_tracer/dotnet/
+
+# Datadog config
+ENV DD_SITE="datadoghq.com"
+ENV DD_HOSTNAME="mecanicaos-api"
+ENV DD_ENV="staging"
+ENV DD_SERVICE="mecanicaos-api"
+ENV DD_VERSION="1.0.0"
+ENV DD_APPSEC_ENABLED=true
+ENV DD_APM_ENABLED=true
+ENV DD_IAST_ENABLED=true
+ENV DD_APPSEC_SCA_ENABLED=true
+ENV DD_LOGS_INJECTION=true
+ENV DD_LOGS_ENABLED=true
+ENV DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL=true
+ENV DD_CONTAINER_EXCLUDE="name:datadog-agent"
+ENV DD_APM_IGNORE_RESOURCES="(?i)hangfire"
+
+COPY --from=build /app/publish .
 COPY --from=build /src/MecanicaOS/API/Templates ./Templates
 
-# Expondo a porta padrão do Kestrel
 EXPOSE 80
-
-# Variável de ambiente para ASP.NET Core
 ENV ASPNETCORE_URLS=http://+:80
 
-ENTRYPOINT ["dotnet", "API.dll"]
+ENTRYPOINT ["/app/datadog-init"]
+CMD ["dotnet", "API.dll"]
