@@ -43,11 +43,5 @@ data "aws_security_group" "eks_nodes" {
   depends_on = [aws_eks_node_group.nodes]
 }
 
-# Service do Kubernetes para a API (para obter o Load Balancer)
-data "kubernetes_service" "api" {
-  metadata {
-    name      = "api-service"
-    namespace = "default" # Ajuste se o namespace for outro
-  }
-  depends_on = [null_resource.apply_k8s_manifests]
-}
+# Bloco removido para evitar dependência circular.
+# O hostname do ALB agora é passado na segunda fase do 'terraform apply'.

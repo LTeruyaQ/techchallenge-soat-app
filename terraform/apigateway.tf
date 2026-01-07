@@ -32,18 +32,20 @@ resource "aws_lambda_permission" "api_gw" {
 }
 
 resource "aws_apigatewayv2_integration" "eks" {
+  count                = var.alb_hostname == "" ? 0 : 1
   api_id               = aws_apigatewayv2_api.http_api.id
   integration_type     = "HTTP_PROXY"
-  integration_uri      = "http://${data.kubernetes_service.api.status.0.load_balancer.0.ingress.0.hostname}"
+  integration_uri      = "http://${var.alb_hostname}"
   integration_method   = "ANY"
   connection_type      = "VPC_LINK"
-  connection_id        = aws_vpc_link.eks.id
+  connection_id        = aws_apigatewayv2_vpc_link.eks.id
 }
 
 resource "aws_apigatewayv2_route" "eks_proxy" {
+  count     = var.alb_hostname == "" ? 0 : 1
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "ANY /{proxy+}"
-  target    = "integrations/${aws_apigatewayv2_integration.eks.id}"
+  target    = "integrations/${aws_apigatewayv2_integration.eks[0].id}"
 }
 
 resource "aws_apigatewayv2_vpc_link" "eks" {

@@ -89,6 +89,26 @@ variable "node_min_size" {
 }
 
 # ============================================
+# Variáveis do ECR
+# ============================================
+
+variable "ecr_repo_name" {
+  description = "Nome do repositório ECR"
+  type        = string
+  default     = "mecanicaos-ecr"
+}
+
+# ============================================
+# Variáveis do API Gateway
+# ============================================
+
+variable "alb_hostname" {
+  description = "Hostname do Application Load Balancer (ALB) criado pelo Ingress do EKS. Usado na segunda fase do apply."
+  type        = string
+  default     = ""
+}
+
+# ============================================
 # Variáveis do Kubernetes
 # ============================================
 
