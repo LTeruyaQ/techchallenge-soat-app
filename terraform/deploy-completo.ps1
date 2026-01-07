@@ -101,16 +101,11 @@ if ($Plan) {
 if (-not $SkipInfra) {
     Write-Title "ETAPA 3: Deploy de Infraestrutura Completa com Terraform"
 
-    # Descoberta de Roles do AWS Academy
-    Write-Step "Detectando Roles do EKS (AWS Academy)..."
-    $clusterRole = aws iam list-roles --query "Roles[?contains(RoleName,'LabEksClusterRole')].RoleName | [0]" --output text
-    $nodeRole    = aws iam list-roles --query "Roles[?contains(RoleName,'LabEksNodeRole')].RoleName | [0]" --output text
-
-    if (-not $clusterRole -or -not $nodeRole) {
-        Write-ErrorMsg "Roles do EKS (LabEksClusterRole, LabEksNodeRole) não encontradas. Verifique se o ambiente AWS Academy está configurado corretamente."
-        exit 1
-    }
-    Write-Success "Roles do EKS encontradas."
+    # Atribuição de Roles do AWS Academy
+    Write-Step "Atribuindo Roles padrão do EKS (AWS Academy)..."
+    $clusterRole = "LabEksClusterRole"
+    $nodeRole    = "LabEksNodeRole"
+    Write-Success "Roles do EKS definidas: '$clusterRole' e '$nodeRole'."
     $env:TF_VAR_eks_cluster_role = $clusterRole
     $env:TF_VAR_eks_node_role    = $nodeRole
 
