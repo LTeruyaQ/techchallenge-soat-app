@@ -9,7 +9,7 @@ O objetivo é demonstrar uma solução "production-ready" que vai do código à 
 - **Autenticação Segura:** Um fluxo de autenticação desacoplado com JWT, usando um Lambda Authorizer no API Gateway.
 - **Banco de Dados Gerenciado:** RDS PostgreSQL em subnets privadas para segurança.
 - **Orquestração de Contêineres:** API rodando em um cluster EKS.
-- **Automação Total:** Um único script (`deploy-completo.ps1`) que orquestra todo o processo.
+- **Automação Total:** Um pipeline de CI/CD no GitHub Actions que orquestra todo o processo.
 
 ---
 
@@ -61,41 +61,30 @@ graph TD
 
 ## 3. Como Executar o Deploy Completo
 
-A solução foi projetada para ser implantada com um único comando, sem a necessidade de configurações manuais.
+A solução é implantada automaticamente através de um pipeline de CI/CD no GitHub Actions.
 
 ### 3.1. Pré-requisitos
 
--   **AWS CLI:** [Instalado](https://aws.amazon.com/cli/) e configurado com credenciais de administrador (`aws configure`).
--   **Terraform:** [Instalado](https://learn.hashicorp.com/tutorials/terraform/install-cli).
--   **Docker Desktop:** [Instalado](https://www.docker.com/products/docker-desktop/) e em execução.
--   **PowerShell:** Instalado no seu sistema.
--   **Git:** [Instalado](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git).
--   **Python e Pip:** Para instalar as dependências da Lambda.
+-   **Conta AWS:** Uma conta AWS com permissões para criar os recursos necessários (EKS, RDS, etc.).
+-   **Segredos do GitHub:** O repositório no GitHub precisa ter os seguintes segredos configurados para que o pipeline possa se autenticar na AWS:
+    -   `AWS_IAM_ROLE_TO_ASSUME`: O ARN do role do IAM que o GitHub Actions deve assumir para ter permissões de deploy.
 
 ### 3.2. Instruções
 
-1.  **Clone o repositório:**
+1.  **Faça um push para a branch `Main`:**
     ```bash
-    git clone <URL_DO_REPOSITORIO>
-    cd <NOME_DO_REPOSITORIO>
+    git push origin Main
     ```
+2.  **Acompanhe o pipeline:**
+    -   Vá para a aba "Actions" no seu repositório do GitHub.
+    -   O workflow "Deploy to AWS" será iniciado automaticamente.
 
-2.  **Navegue até o diretório do Terraform:**
-    ```bash
-    cd terraform
-    ```
-
-3.  **Execute o script de deploy:**
-    ```powershell
-    ./deploy-completo.ps1
-    ```
-
-O script cuidará de tudo:
+O pipeline cuidará de tudo:
 -   Fará o build da imagem Docker da API.
 -   Fará o push da imagem para um novo repositório no Amazon ECR.
 -   Instalará as dependências da função Lambda Authorizer.
 -   Executará `terraform init` e `terraform apply` para provisionar toda a infraestrutura na AWS.
--   Ao final, exibirá a URL do API Gateway para que você possa interagir com a API.
+-   Ao final do log do job de deploy, você encontrará a URL do API Gateway para interagir com a API.
 
 ---
 
