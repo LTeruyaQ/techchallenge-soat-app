@@ -98,10 +98,12 @@ variable "node_min_size" {
 # Variáveis do ECR
 # ============================================
 
-variable "ecr_repo_name" {
-  description = "Nome do repositório ECR"
+# A variável ecr_repo_name foi removida. O nome agora é fixo
+# e gerenciado pelo script deploy-completo.ps1.
+
+variable "ecr_repository_url" {
+  description = "URL do repositório ECR criado pelo script de deploy."
   type        = string
-  default     = "mecanicaos-ecr"
 }
 
 # ============================================

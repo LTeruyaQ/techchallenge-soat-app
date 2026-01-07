@@ -20,5 +20,5 @@ locals {
   docker_image_tag = var.docker_image_tag != "" ? var.docker_image_tag : "latest"
 
   # Imagem Docker no ECR
-  docker_image = "${local.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/${aws_ecr_repository.app.name}:${local.docker_image_tag}"
+  docker_image = "${var.ecr_repository_url}:${local.docker_image_tag}"
 }
