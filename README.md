@@ -170,15 +170,15 @@ Ideal para desenvolvimento e testes rápidos.
 
 ### 4.2. Provisionamento da Infraestrutura com Terraform
 
-Os scripts para provisionar a infraestrutura em nuvem (AWS) estão no diretório `/infra`.
+Os scripts para provisionar a infraestrutura em nuvem (AWS) estão organizados nos diretórios `infra-database/` e `infra-kubernetes/`.
 
 1. **Pré-requisitos:**
    - [Terraform CLI](https://learn.hashicorp.com/tutorials/terraform/install-cli) instalado.
    - Credenciais da AWS configuradas no seu ambiente.
 
-2. **Acesse o diretório do Terraform:**
+2. **Acesse o diretório do Terraform de orquestração:**
    ```bash
-   cd infra
+   cd infra-kubernetes
    ```
 
 3. **Inicialize o Terraform:**
@@ -195,21 +195,16 @@ Os scripts para provisionar a infraestrutura em nuvem (AWS) estão no diretório
 
 ### 4.3. Deploy em Kubernetes
 
-Após provisionar a infraestrutura, siga os passos para o deploy da aplicação.
+O deploy no Kubernetes é orquestrado pelo Terraform, que aplica os manifestos automaticamente.
 
 1. **Pré-requisitos:**
    - `kubectl` configurado para apontar para o seu cluster (o Terraform gera o `kubeconfig`).
 
 2. **Acesse o diretório dos manifestos:**
-   ```bash
-   cd k8s
-   ```
+   Os manifestos (`.yaml`) estão localizados em `infra-kubernetes/k8s/`.
 
-3. **Aplique os manifestos:**
-   ```bash
-   kubectl apply -f .
-   ```
-   Este comando criará os Deployments, Services, ConfigMaps, Secrets e HPA no cluster.
+3. **Aplique os manifestos (via Terraform):**
+   O comando `terraform apply` no diretório `infra-kubernetes/` irá aplicar automaticamente os manifestos no cluster.
 
 4. **Acesse os serviços:**
    - A URL da API será exposta por um Load Balancer ou Ingress. Verifique com `kubectl get services`.
@@ -230,9 +225,10 @@ Para rodar o projeto localmente, é necessário configurar a variável secreta q
 ## 5. Entregáveis
 
 - **Código-fonte:** Refatorado com Clean Architecture.
-- **Containerização:** `/Dockerfile` e `/docker-compose.yml`.
-- **Manifestos Kubernetes:** No diretório `/k8s`.
-- **Scripts de IaC:** No diretório `/infra`.
+- **Containerização:** Em `app-mecanicaos/Dockerfile`.
+- **Manifestos Kubernetes:** No diretório `infra-kubernetes/k8s/`.
+- **Scripts de IaC:** Nos diretórios `infra-database/` e `infra-kubernetes/`.
+- **Código da Lambda:** No diretório `lambda-auth/`.
 - **Pipeline CI/CD:** No diretório `/.github/workflows`.
 
 ---
