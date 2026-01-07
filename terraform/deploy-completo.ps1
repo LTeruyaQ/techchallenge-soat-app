@@ -84,9 +84,20 @@ Write-Step "Instalando dependências da Lambda"
 pip install -r ./lambda_authorizer/requirements.txt -t ./lambda_authorizer/package
 Copy-Item -Path ./lambda_authorizer/main.py -Destination ./lambda_authorizer/package/
 
+Write-Step "Descobrindo Roles do EKS para o AWS Academy"
+$clusterRoleArn = aws iam list-roles --query "Roles[?contains(RoleName,'LabEksClusterRole')].Arn | [0]" --output text
+$nodeRoleArn    = aws iam list-roles --query "Roles[?contains(RoleName,'LabEksNodeRole')].Arn | [0]" --output text
+
+if (-not $clusterRoleArn -or -not $nodeRoleArn) {
+    Write-ErrorMsg "Roles do EKS não encontradas (AWS Academy). Verifique se você está no ambiente correto."
+    exit 1
+}
+Write-Success "Cluster Role ARN: $clusterRoleArn"
+Write-Success "Node Role ARN: $nodeRoleArn"
+
 terraform init
 terraform validate
-terraform apply -auto-approve -var="alb_dns_name=dummy" # Usamos um valor dummy por enquanto
+terraform apply -auto-approve -var="alb_dns_name=dummy" -var="eks_cluster_role_arn=$clusterRoleArn" -var="eks_node_role_arn=$nodeRoleArn"
 
 $EKS_CLUSTER_NAME = terraform output -raw eks_cluster_name
 $ECR_REPOSITORY_URL = terraform output -raw ecr_repository_url
@@ -184,7 +195,7 @@ while (-not $ALB_DNS_NAME) {
 Write-Success "ALB DNS: $ALB_DNS_NAME"
 
 Write-Step "Executando o terraform apply final com o DNS do ALB"
-terraform apply -auto-approve -var="alb_dns_name=$ALB_DNS_NAME"
+terraform apply -auto-approve -var="alb_dns_name=$ALB_DNS_NAME" -var="eks_cluster_role_arn=$clusterRoleArn" -var="eks_node_role_arn=$nodeRoleArn"
 
 # ======================================================
 # ETAPA 7: VERIFICAÇÃO FINAL

@@ -11,7 +11,7 @@ resource "aws_eks_cluster" "eks" {
   }
 
   # Usando role do AWS Academy
-  role_arn = data.aws_iam_role.eks_cluster_role.arn
+  role_arn = var.eks_cluster_role_arn
   version  = "1.28"
 
   vpc_config {

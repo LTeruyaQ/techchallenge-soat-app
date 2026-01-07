@@ -30,12 +30,4 @@ data "aws_subnets" "public" {
   }
 }
 
-data "aws_iam_role" "eks_cluster_role" {
-  name = "LabRole"
-}
-
-data "aws_iam_role" "eks_node_role" {
-  name = "LabRole"
-}
-
 data "aws_caller_identity" "current" {}
