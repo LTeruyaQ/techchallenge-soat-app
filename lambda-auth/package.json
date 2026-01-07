@@ -1,0 +1,11 @@
+{
+  "name": "auth-lambda",
+  "version": "1.0.0",
+  "description": "Função Lambda para autenticação de clientes e geração de JWT.",
+  "main": "index.js",
+  "dependencies": {
+    "jsonwebtoken": "^9.0.0",
+    "pg": "^8.11.3",
+    "dd-trace": "^5.14.0"
+  }
+}

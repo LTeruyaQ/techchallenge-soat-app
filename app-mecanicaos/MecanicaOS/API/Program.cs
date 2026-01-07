@@ -76,7 +76,9 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Configuration.AddEnvironmentVariables();
 
-string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+// A string de conexão agora é lida diretamente da variável de ambiente,
+// que será injetada pelo Kubernetes.
+string? connectionString = builder.Configuration.GetValue<string>("DB_CONNECTION_STRING");
 
 builder.Services.AddDbContext<MecanicaContexto>(options =>
     options.UseNpgsql(connectionString, npgsqlOptionsAction: sqlOptions =>
@@ -97,12 +99,12 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
-            ValidateIssuer = true,
-            ValidateAudience = true,
+            // Como o token é gerado por um sistema externo (Lambda),
+            // relaxamos a validação de Issuer e Audience, focando na assinatura.
+            ValidateIssuer = false,
+            ValidateAudience = false,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            ValidIssuer = jwtConfig.Issuer,
-            ValidAudience = jwtConfig.Audience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtConfig.SecretKey)),
             ClockSkew = TimeSpan.Zero
         };
