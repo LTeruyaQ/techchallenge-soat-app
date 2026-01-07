@@ -7,7 +7,7 @@ resource "random_id" "ecr_suffix" {
 }
 
 resource "aws_ecr_repository" "app" {
-  name         = "${var.docker_image_repo}-${random_id.ecr_suffix.hex}"
+  name         = "${var.ecr_repo_name}-${random_id.ecr_suffix.hex}"
   force_delete = true
 
   image_scanning_configuration {
