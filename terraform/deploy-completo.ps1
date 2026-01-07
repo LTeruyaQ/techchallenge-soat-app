@@ -67,7 +67,7 @@ try {
     Write-Success "Docker daemon está ativo."
 } catch {
     Write-ErrorMsg "Docker não está rodando. Por favor, inicie o Docker Desktop e tente novamente."
-    exit 1
+    throw
 }
 
 # Obtém informações da conta AWS
@@ -77,7 +77,7 @@ try {
     Write-Success "AWS Account ID: $awsAccountId"
 } catch {
     Write-ErrorMsg "Credenciais AWS inválidas. Configure suas credenciais e tente novamente."
-    exit 1
+    throw
 }
 
 $ecrRepoName = "mecanicaos-ecr"
@@ -85,9 +85,9 @@ $ecrRepoUrl = "${awsAccountId}.dkr.ecr.${AwsRegion}.amazonaws.com/${ecrRepoName}
 $imageTag = (git rev-parse --short HEAD)
 
 # Login no ECR
+Write-Step "Autenticando Docker no ECR..."
 try {
-    Write-Step "Autenticando Docker no ECR..."
-    aws ecr get-login-password --region $AwsRegion | docker login --username AWS --password-stdin $ecrRepoUrl
+    aws ecr get-login-password --region $AwsRegion | docker login --username AWS --password-stdin $ecrRepoUrl | Out-Null
     Write-Success "Login no ECR bem-sucedido."
 } catch {
     Write-ErrorMsg "Falha ao autenticar no ECR. Verifique suas permissões do IAM."
@@ -100,14 +100,19 @@ try {
     aws ecr describe-repositories --repository-names $ecrRepoName --region $AwsRegion --output text > $null
     Write-Success "Repositório ECR já existe."
 } catch {
-    Write-Info "Repositório não encontrado, criando..."
-    aws ecr create-repository --repository-name $ecrRepoName --region $AwsRegion --output text > $null
-    Write-Success "Repositório ECR criado."
+    try {
+        Write-Info "Repositório não encontrado, criando..."
+        aws ecr create-repository --repository-name $ecrRepoName --region $AwsRegion --output text > $null
+        Write-Success "Repositório ECR criado."
+    } catch {
+        Write-ErrorMsg "Falha ao criar o repositório ECR."
+        throw
+    }
 }
 
 # Build e Push da Imagem
+Write-Step "Construindo e enviando a imagem Docker (Tag: $imageTag)..."
 try {
-    Write-Step "Construindo e enviando a imagem Docker (Tag: $imageTag)..."
     cd .. # Sobe para a raiz do projeto
     docker build -t "${ecrRepoUrl}:${imageTag}" .
     docker tag "${ecrRepoUrl}:${imageTag}" "${ecrRepoUrl}:latest"
@@ -129,74 +134,70 @@ Write-Title "ETAPA 3: Deploy da Infraestrutura com Terraform"
 # Limpa o cache local do Terraform para garantir um estado limpo
 Remove-Item -Path ".terraform", ".terraform.lock.hcl" -Recurse -Force -ErrorAction SilentlyContinue
 
-Write-Step "Executando terraform init..."
-terraform init -reconfigure
+try {
+    Write-Step "Executando terraform init..."
+    terraform init -reconfigure
 
-Write-Step "Executando terraform apply..."
-$tfVars = @{
-    "docker_image_repo" = $ecrRepoUrl
-    "docker_image_tag" = $imageTag
-}
-
-# Converte o hashtable para uma string de argumentos -var
-$varString = ($tfVars.GetEnumerator() | ForEach-Object { "-var='$($_.Key)=$($_.Value)'" }) -join " "
-
-terraform apply -auto-approve $varString
-Write-Success "Infraestrutura implantada com sucesso."
-
-# ======================================================
-# ETAPA 4: CONFIGURAÇÃO DO KUBECTL
-# ======================================================
-Write-Title "ETAPA 4: Configurando Kubeconfig"
-
-$eksClusterName = terraform output -raw eks_cluster_name
-aws eks update-kubeconfig --region $AwsRegion --name $eksClusterName
-Write-Success "Kubeconfig atualizado para o cluster '$eksClusterName'."
-
-# ======================================================
-# ETAPA 5: DEPLOY DA APLICAÇÃO NO KUBERNETES
-# ======================================================
-Write-Title "ETAPA 5: Deploy da Aplicação no Kubernetes"
-
-# Obtém a connection string do RDS a partir do output do Terraform
-$dbPassword = terraform output -raw rds_master_password
-$dbHost = terraform output -raw rds_hostname
-$dbPort = terraform output -raw rds_port
-$dbUsername = terraform output -raw rds_username
-$dbName = "postgres" # Nome padrão do banco de dados no módulo RDS
-
-$connectionString = "Host=${dbHost};Port=${dbPort};Database=${dbName};Username=${dbUsername};Password=${dbPassword}"
-
-# Cria o namespace 'mecanicaos' se não existir
-Write-Step "Garantindo que o namespace 'mecanicaos' existe..."
-kubectl apply -f ../k8s/namespace.yaml
-
-# Cria ou atualiza o secret com a connection string
-Write-Step "Criando/Atualizando o secret 'api-secret'..."
-kubectl create secret generic api-secret `
-    --from-literal=ConnectionStrings__DefaultConnection=$connectionString `
-    --namespace=mecanicaos `
-    --dry-run=client -o yaml | kubectl apply -f -
-
-# Aplica os manifestos do Kubernetes
-Write-Step "Aplicando manifestos Kubernetes..."
-$k8sDir = "..\k8s"
-
-# Substitui o placeholder da imagem no deployment
-$deploymentTemplate = Get-Content -Path "$k8sDir\api-deployment.yaml" -Raw
-$deploymentContent = $deploymentTemplate -replace '\${docker_image}', "${ecrRepoUrl}:${imageTag}"
-
-# Aplica os manifestos restantes
-Get-ChildItem -Path $k8sDir -Filter "*.yaml" | ForEach-Object {
-    if ($_.Name -ne "api-deployment.yaml" -and $_.Name -ne "namespace.yaml") {
-        kubectl apply -f $_.FullName
+    Write-Step "Executando terraform apply..."
+    $tfVars = @{
+        "docker_image_repo" = $ecrRepoUrl
+        "docker_image_tag" = $imageTag
     }
+
+    # Converte o hashtable para uma string de argumentos -var
+    $varString = ($tfVars.GetEnumerator() | ForEach-Object { "-var=`"$($_.Key)=$($_.Value)`"" }) -join " "
+
+    terraform apply -auto-approve $varString
+    Write-Success "Infraestrutura implantada com sucesso."
+} catch {
+    Write-ErrorMsg "Falha durante a execução do Terraform. A infraestrutura pode estar em um estado parcial."
+    throw
 }
 
-# Aplica o deployment modificado
-$deploymentContent | kubectl apply -f -
+# ======================================================
+# ETAPA 4: CONFIGURAÇÃO DO KUBECTL E DEPLOY K8S
+# ======================================================
+Write-Title "ETAPA 4: Deploy no Kubernetes"
 
-Write-Success "Aplicação implantada no Kubernetes."
+try {
+    Write-Step "Configurando Kubeconfig..."
+    $eksClusterName = terraform output -raw eks_cluster_name
+    aws eks update-kubeconfig --region $AwsRegion --name $eksClusterName
+    Write-Success "Kubeconfig atualizado para o cluster '$eksClusterName'."
+
+    Write-Step "Obtendo connection string do RDS..."
+    $dbPassword = terraform output -raw rds_master_password
+    $dbHost = terraform output -raw rds_hostname
+    $dbPort = terraform output -raw rds_port
+    $dbUsername = terraform output -raw rds_username
+    $dbName = "postgres"
+    $connectionString = "Host=${dbHost};Port=${dbPort};Database=${dbName};Username=${dbUsername};Password=${dbPassword}"
+
+    Write-Step "Aplicando manifestos no Kubernetes..."
+    kubectl apply -f ../k8s/namespace.yaml
+
+    kubectl create secret generic api-secret `
+        --from-literal=ConnectionStrings__DefaultConnection=$connectionString `
+        --namespace=mecanicaos `
+        --dry-run=client -o yaml | kubectl apply -f -
+
+    $k8sDir = "..\k8s"
+    $deploymentTemplate = Get-Content -Path "$k8sDir\api-deployment.yaml" -Raw
+    $deploymentContent = $deploymentTemplate -replace '\${docker_image}', "${ecrRepoUrl}:${imageTag}"
+
+    Get-ChildItem -Path $k8sDir -Filter "*.yaml" | ForEach-Object {
+        if ($_.Name -ne "api-deployment.yaml" -and $_.Name -ne "namespace.yaml") {
+            kubectl apply -f $_.FullName
+        }
+    }
+
+    $deploymentContent | kubectl apply -f -
+    Write-Success "Aplicação implantada no Kubernetes."
+
+} catch {
+    Write-ErrorMsg "Falha durante o deploy no Kubernetes. Verifique a conexão com o cluster e os logs do kubectl."
+    throw
+}
 
 # ======================================================
 # ETAPA 6: INFORMAÇÕES FINAIS
