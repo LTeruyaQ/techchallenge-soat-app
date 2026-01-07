@@ -27,10 +27,8 @@ output "eks_cluster_endpoint" {
   value       = aws_eks_cluster.eks.endpoint
 }
 
-output "ecr_repository_url" {
-  description = "URL do repositório ECR"
-  value       = aws_ecr_repository.app.repository_url
-}
+# A saída ecr_repository_url foi removida pois o ECR
+# agora é criado e gerenciado pelo script deploy-completo.ps1.
 
 output "rds_endpoint" {
   description = "Endpoint do banco de dados RDS"
