@@ -16,9 +16,6 @@ locals {
   eks_node_role_arn    = "arn:aws:iam::${local.account_id}:role/${var.eks_node_role}"
   lab_role_arn         = "arn:aws:iam::${local.account_id}:role/${var.lab_role}"
 
-  # Tag da imagem Docker - usa variável se fornecida, senão usa "latest"
-  docker_image_tag = var.docker_image_tag != "" ? var.docker_image_tag : "latest"
-
-  # Imagem Docker no ECR
-  docker_image = "${var.ecr_repository_url}:${local.docker_image_tag}"
+  # A lógica de construção da imagem foi removida pois estamos
+  # usando uma imagem pública diretamente.
 }

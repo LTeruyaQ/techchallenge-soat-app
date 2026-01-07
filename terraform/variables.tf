@@ -99,15 +99,8 @@ variable "node_min_size" {
 # ============================================
 
 # A variável ecr_repo_name foi removida. O nome agora é fixo
-# e gerenciado pelo script deploy-completo.ps1.
-
-variable "ecr_repository_url" {
-  description = "URL do repositório ECR criado pelo script de deploy."
-  type        = string
-}
-
-# ============================================
-# Variáveis do API Gateway
+# O build da imagem foi desativado para contornar restrições do ECR.
+# A imagem pública será usada diretamente.
 # ============================================
 
 variable "alb_hostname" {

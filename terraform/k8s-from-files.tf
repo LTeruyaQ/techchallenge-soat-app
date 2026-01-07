@@ -11,7 +11,7 @@
 locals {
   k8s_template_vars = {
     replicas                    = var.replicas
-    docker_image                = local.docker_image
+    docker_image                = var.docker_image
     environment                 = var.environment
     db_connection_string        = local.db_connection_string
     jwt_secret_key              = var.jwt_secret_key
