@@ -60,6 +60,16 @@ if ($Destroy) {
 # ======================================================
 Write-Title "ETAPA 2: Build e Push da Imagem Docker"
 
+# Valida se o Docker está rodando
+Write-Step "Verificando se o Docker Desktop está rodando..."
+try {
+    docker info > $null
+    Write-Success "Docker daemon está ativo."
+} catch {
+    Write-ErrorMsg "Docker não está rodando. Por favor, inicie o Docker Desktop e tente novamente."
+    exit 1
+}
+
 # Obtém informações da conta AWS
 try {
     $callerIdentity = aws sts get-caller-identity --output json | ConvertFrom-Json
@@ -75,33 +85,41 @@ $ecrRepoUrl = "${awsAccountId}.dkr.ecr.${AwsRegion}.amazonaws.com/${ecrRepoName}
 $imageTag = (git rev-parse --short HEAD)
 
 # Login no ECR
-Write-Step "Autenticando Docker no ECR..."
-aws ecr get-login-password --region $AwsRegion | docker login --username AWS --password-stdin $ecrRepoUrl
-Write-Success "Login no ECR bem-sucedido."
-
-# Cria o repositório ECR se não existir
-Write-Step "Verificando/Criando repositório ECR..."
 try {
-    aws ecr describe-repositories --repository-names $ecrRepoName --region $AwsRegion | Out-Null
-    Write-Success "Repositório ECR '$ecrRepoName' já existe."
+    Write-Step "Autenticando Docker no ECR..."
+    aws ecr get-login-password --region $AwsRegion | docker login --username AWS --password-stdin $ecrRepoUrl
+    Write-Success "Login no ECR bem-sucedido."
 } catch {
-    aws ecr create-repository --repository-name $ecrRepoName --region $AwsRegion | Out-Null
-    Write-Success "Repositório ECR '$ecrRepoName' criado."
+    Write-ErrorMsg "Falha ao autenticar no ECR. Verifique suas permissões do IAM."
+    throw
 }
 
-# Build da imagem
-Write-Step "Construindo a imagem Docker (Tag: $imageTag)..."
-cd .. # Sobe para a raiz do projeto para encontrar o Dockerfile
-docker build -t "${ecrRepoUrl}:${imageTag}" .
-docker tag "${ecrRepoUrl}:${imageTag}" "${ecrRepoUrl}:latest"
-cd terraform # Volta para o diretório do terraform
-Write-Success "Build da imagem concluído."
+# Cria o repositório ECR se não existir
+Write-Step "Verificando/Criando repositório ECR '$ecrRepoName'..."
+try {
+    aws ecr describe-repositories --repository-names $ecrRepoName --region $AwsRegion --output text > $null
+    Write-Success "Repositório ECR já existe."
+} catch {
+    Write-Info "Repositório não encontrado, criando..."
+    aws ecr create-repository --repository-name $ecrRepoName --region $AwsRegion --output text > $null
+    Write-Success "Repositório ECR criado."
+}
 
-# Push para o ECR
-Write-Step "Enviando a imagem para o ECR..."
-docker push "${ecrRepoUrl}:${imageTag}"
-docker push "${ecrRepoUrl}:latest"
-Write-Success "Push para o ECR concluído."
+# Build e Push da Imagem
+try {
+    Write-Step "Construindo e enviando a imagem Docker (Tag: $imageTag)..."
+    cd .. # Sobe para a raiz do projeto
+    docker build -t "${ecrRepoUrl}:${imageTag}" .
+    docker tag "${ecrRepoUrl}:${imageTag}" "${ecrRepoUrl}:latest"
+    docker push "${ecrRepoUrl}:${imageTag}"
+    docker push "${ecrRepoUrl}:latest"
+    cd terraform # Volta para o diretório
+    Write-Success "Build e Push concluídos."
+} catch {
+    Write-ErrorMsg "Falha durante o build ou push da imagem Docker."
+    cd terraform # Garante que estamos no diretório certo em caso de falha
+    throw
+}
 
 # ======================================================
 # ETAPA 3: DEPLOY DA INFRAESTRUTURA (TERRAFORM)
@@ -121,7 +139,7 @@ $tfVars = @{
 }
 
 # Converte o hashtable para uma string de argumentos -var
-$varString = $tfVars.GetEnumerator() | ForEach-Object { "-var='$($_.Key)=$($_.Value)'" } | Join-String -Separator " "
+$varString = ($tfVars.GetEnumerator() | ForEach-Object { "-var='$($_.Key)=$($_.Value)'" }) -join " "
 
 terraform apply -auto-approve $varString
 Write-Success "Infraestrutura implantada com sucesso."
