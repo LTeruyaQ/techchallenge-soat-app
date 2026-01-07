@@ -13,3 +13,12 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "[OK] AWS CLI e STS funcionando corretamente" -ForegroundColor Green
+
+# Checagem do psql
+try {
+    psql --version | Out-Null
+    Write-Host "[OK] psql (PostgreSQL client) encontrado." -ForegroundColor Green
+} catch {
+    Write-Host "[X] psql não encontrado no PATH. Ele é necessário para a inicialização do banco de dados." -ForegroundColor Red
+    exit 1
+}

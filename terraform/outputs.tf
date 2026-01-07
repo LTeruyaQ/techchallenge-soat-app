@@ -32,6 +32,31 @@ output "ecr_repository_url" {
   value       = aws_ecr_repository.app.repository_url
 }
 
+output "rds_endpoint" {
+  description = "Endpoint do banco de dados RDS"
+  value       = aws_db_instance.default.endpoint
+}
+
+output "rds_dbname" {
+  description = "Nome do banco de dados RDS"
+  value       = aws_db_instance.default.db_name
+}
+
+output "db_secret_arn" {
+  description = "ARN do segredo do banco de dados no Secrets Manager"
+  value       = aws_secretsmanager_secret.db_credentials.arn
+}
+
+output "api_gateway_endpoint" {
+  description = "URL do API Gateway"
+  value       = aws_apigatewayv2_api.http_api.api_endpoint
+}
+
+output "lambda_auth_function_name" {
+  description = "Nome da função Lambda de autenticação"
+  value       = aws_lambda_function.auth_lambda.function_name
+}
+
 output "docker_image" {
   description = "Imagem Docker utilizada no deployment"
   value       = local.docker_image
