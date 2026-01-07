@@ -1,0 +1,6 @@
+# Ignore Terraform state files
+*.tfstate
+*.tfstate.backup
+
+# Ignore local Terraform configuration directories
+.terraform
