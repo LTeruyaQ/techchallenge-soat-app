@@ -1,6 +1,6 @@
 # ============================================
 # Script de Deploy COMPLETO - MecanicaOS (AWS Academy)
-# Versão Robusta com Tratamento de Erros
+# Versão Robusta com Inicialização de DB via K8s Job
 # ============================================
 
 param(
@@ -47,7 +47,7 @@ try {
     Check-Last-Exit-Code
     Write-Success "Sanity check passou."
 } catch {
-    Write-ErrorMsg "Sanity check falhou. Verifique se todas as dependências (AWS CLI, Terraform, kubectl, psql) estão instaladas e no PATH."
+    Write-ErrorMsg "Sanity check falhou. Verifique se as dependências (AWS CLI, Terraform, kubectl) estão instaladas e no PATH."
     throw
 }
 
@@ -138,29 +138,67 @@ $EKS_CLUSTER_NAME = terraform output -raw eks_cluster_name; Check-Last-Exit-Code
 aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME; Check-Last-Exit-Code
 Write-Success "kubectl configurado para o cluster '$EKS_CLUSTER_NAME'."
 
-# Inicialização do Banco de Dados RDS
-Write-Step "Inicializando o esquema do banco de dados RDS..."
+# Inicialização do Banco de Dados RDS via Job do Kubernetes
+Write-Step "Inicializando o esquema do banco de dados RDS via Job do Kubernetes..."
+$NAMESPACE = "build"
 try {
-    $DB_ENDPOINT = terraform output -raw rds_endpoint; Check-Last-Exit-Code
+    # Obter detalhes do RDS do Terraform
+    $DB_HOST = (terraform output -raw rds_endpoint).Split(':')[0]; Check-Last-Exit-Code
     $DB_NAME = terraform output -raw rds_dbname; Check-Last-Exit-Code
     $DB_SECRET_ARN = terraform output -raw db_secret_arn; Check-Last-Exit-Code
 
+    # Obter senha do Secrets Manager
     Write-Info "Obtendo senha do RDS do Secrets Manager..."
     $secretValueJson = aws secretsmanager get-secret-value --secret-id $DB_SECRET_ARN --query SecretString --output text; Check-Last-Exit-Code
     $secretValue = $secretValueJson | ConvertFrom-Json
     $DB_USER = $secretValue.username
     $DB_PASSWORD = $secretValue.password
 
-    Write-Info "Executando rds-init.sql no RDS..."
-    $env:PGPASSWORD = $DB_PASSWORD
-    psql "host=$($DB_ENDPOINT.Split(':')[0]) port=$($DB_ENDPOINT.Split(':')[1]) dbname=$DB_NAME user=$DB_USER sslmode=require" -f ".\rds-init.sql"; Check-Last-Exit-Code
-    $env:PGPASSWORD = $null # Limpar a variável de ambiente
-    Write-Success "Esquema do banco de dados inicializado com sucesso."
-} catch {
-    Write-ErrorMsg "Falha ao inicializar o banco de dados RDS. Verifique a conectividade e as saídas do Terraform."
-    throw
-}
+    # Criar segredo no K8s para o Job
+    Write-Info "Criando segredo temporário no Kubernetes para as credenciais do RDS..."
+    kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+    kubectl delete secret generic rds-credentials -n $NAMESPACE --ignore-not-found
+    kubectl create secret generic rds-credentials -n $NAMESPACE `
+        --from-literal=host=$DB_HOST `
+        --from-literal=dbname=$DB_NAME `
+        --from-literal=user=$DB_USER `
+        --from-literal=password=$DB_PASSWORD; Check-Last-Exit-Code
 
+    # Aplicar o ConfigMap e o Job
+    Write-Info "Aplicando ConfigMap com script SQL e o Job de inicialização..."
+    kubectl apply -f "..\k8s\rds-init-configmap.yaml"; Check-Last-Exit-Code
+    kubectl delete job db-init-job -n $NAMESPACE --ignore-not-found
+    kubectl apply -f "..\k8s\rds-init-job.yaml"; Check-Last-Exit-Code
+
+    # Aguardar a conclusão do Job
+    Write-Info "Aguardando a conclusão do Job de inicialização do banco de dados..."
+    $timeout = 300 # 5 minutos
+    $startTime = Get-Date
+    while ((Get-Date) -lt $startTime.AddSeconds($timeout)) {
+        $status = kubectl get job db-init-job -n $NAMESPACE -o jsonpath='{.status.conditions[?(@.type=="Complete")].status}'
+        if ($status -eq 'True') {
+            Write-Success "Job de inicialização do banco de dados concluído com sucesso."
+            break
+        }
+        $failedStatus = kubectl get job db-init-job -n $NAMESPACE -o jsonpath='{.status.conditions[?(@.type=="Failed")].status}'
+        if ($failedStatus -eq 'True') {
+            $logs = kubectl logs job/db-init-job -n $NAMESPACE
+            Write-ErrorMsg "Job de inicialização do banco de dados falhou."
+            Write-Info "Logs do Pod:"
+            Write-Info $logs
+            exit 1
+        }
+        Start-Sleep -Seconds 10
+    }
+
+    Write-Success "Esquema do banco de dados inicializado com sucesso."
+
+} finally {
+    # Limpeza
+    Write-Info "Limpando recursos de inicialização (Job e segredo)..."
+    kubectl delete job db-init-job -n $NAMESPACE --ignore-not-found
+    kubectl delete secret generic rds-credentials -n $NAMESPACE --ignore-not-found
+}
 
 # ======================================================
 # ETAPA 5: BUILD E DEPLOY DA APLICAÇÃO COM KANIKO
@@ -178,11 +216,9 @@ if (-not $SkipBuild) {
     $IMAGE_TAG = (git rev-parse --short HEAD); Check-Last-Exit-Code
     $ECR_URI   = terraform output -raw ecr_repository_url; Check-Last-Exit-Code
     $JOB_NAME  = "kaniko-build-$IMAGE_TAG"
-    $NAMESPACE = "build"
 
-    Write-Step "Aplicando namespace e segredos para o build..."
-    kubectl apply -f "..\k8s\namespace.yaml"; Check-Last-Exit-Code
-    kubectl delete secret generic aws-creds -n $NAMESPACE --ignore-not-found | Out-Null
+    Write-Step "Aplicando segredos para o build..."
+    kubectl delete secret generic aws-creds -n $NAMESPACE --ignore-not-found
     kubectl create secret generic aws-creds `
         -n $NAMESPACE `
         --from-literal=AWS_ACCESS_KEY_ID=$env:AWS_ACCESS_KEY_ID `
@@ -216,7 +252,7 @@ spec:
     $jobYaml | kubectl apply -f -; Check-Last-Exit-Code
     Write-Success "Job Kaniko '$JOB_NAME' submetido. Aguardando conclusão..."
 
-    # Aguardar a conclusão do Job
+    # Aguardar a conclusão do Job do Kaniko
     $timeout = 600 # 10 minutos
     $startTime = Get-Date
     while ((Get-Date) -lt $startTime.AddSeconds($timeout)) {
@@ -235,7 +271,7 @@ spec:
         }
         Start-Sleep -Seconds 10
     }
-    kubectl delete job $JOB_NAME -n $NAMESPACE --ignore-not-found | Out-Null
+    kubectl delete job $JOB_NAME -n $NAMESPACE --ignore-not-found
 }
 
 # ======================================================
