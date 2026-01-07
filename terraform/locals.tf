@@ -14,6 +14,7 @@ locals {
   # ARNs das Roles do IAM (construídos manualmente para contornar restrições de permissão)
   eks_cluster_role_arn = "arn:aws:iam::${local.account_id}:role/${var.eks_cluster_role}"
   eks_node_role_arn    = "arn:aws:iam::${local.account_id}:role/${var.eks_node_role}"
+  lab_role_arn         = "arn:aws:iam::${local.account_id}:role/${var.lab_role}"
 
   # Tag da imagem Docker - usa variável se fornecida, senão usa "latest"
   docker_image_tag = var.docker_image_tag != "" ? var.docker_image_tag : "latest"

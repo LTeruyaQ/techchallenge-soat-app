@@ -60,6 +60,12 @@ variable "eks_node_role" {
   type        = string
 }
 
+variable "lab_role" {
+  description = "IAM Role do Laboratório AWS Academy"
+  type        = string
+  default     = "LabRole"
+}
+
 # ============================================
 # Variáveis do EKS
 # ============================================
