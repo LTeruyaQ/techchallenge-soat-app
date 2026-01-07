@@ -206,8 +206,8 @@ spec:
         args:
         - "--context=git://github.com/$GITHUB_USER/$REPO_NAME.git"
         - "--dockerfile=Dockerfile"
-        - "--destination=$ECR_URI:$IMAGE_TAG"
-        - "--destination=$ECR_URI:latest"
+        - "--destination=${ECR_URI}:$IMAGE_TAG"
+        - "--destination=${ECR_URI}:latest"
 "@
     $jobYaml | kubectl apply -f -
     Write-Success "Job Kaniko '$JOB_NAME' submetido. Aguardando conclusão..."
