@@ -57,7 +57,7 @@ output "lambda_auth_function_name" {
 
 output "docker_image" {
   description = "Imagem Docker utilizada no deployment"
-  value       = local.docker_image
+  value       = var.docker_image
 }
 
 # ============================================
