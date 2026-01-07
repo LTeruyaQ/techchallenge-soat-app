@@ -34,14 +34,23 @@ function Exec([scriptblock]$cmd, $errorMessage) {
 # ======================================================
 Write-Title "ETAPA 0: Verificando Pré-requisitos"
 
-$requiredCommands = @("aws", "terraform", "kubectl", "docker")
-foreach ($cmd in $requiredCommands) {
-    Get-Command $cmd -ErrorAction SilentlyContinue > $null
-    if ($LASTEXITCODE -ne 0) {
-        Write-ErrorAndExit "$cmd não encontrado no PATH. Por favor, instale-o."
-    }
-}
-Write-Success "Todas as ferramentas necessárias estão instaladas."
+Write-Step "Verificando AWS CLI..."
+aws --version 2>&1 > $null
+if ($LASTEXITCODE -ne 0) { Write-ErrorAndExit "AWS CLI não foi encontrado ou não está funcionando. Por favor, (re)instale-o e configure o PATH." }
+
+Write-Step "Verificando Terraform..."
+terraform --version > $null
+if ($LASTEXITCODE -ne 0) { Write-ErrorAndExit "Terraform não foi encontrado no PATH. Por favor, instale-o." }
+
+Write-Step "Verificando Kubectl..."
+kubectl version --client > $null
+if ($LASTEXITCODE -ne 0) { Write-ErrorAndExit "Kubectl não foi encontrado no PATH. Por favor, instale-o." }
+
+Write-Step "Verificando Docker..."
+docker --version > $null
+if ($LASTEXITCODE -ne 0) { Write-ErrorAndExit "Docker não foi encontrado no PATH. Por favor, instale-o." }
+
+Write-Success "Todas as ferramentas necessárias estão instaladas e funcionando."
 
 # ======================================================
 # ETAPA 1: MODO DESTROY
