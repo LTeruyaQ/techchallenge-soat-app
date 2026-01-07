@@ -14,13 +14,13 @@ variable "docker_image" {
   type        = string
 }
 
-variable "supabase_url" {
-  description = "URL do Supabase (banco de dados externo)"
+variable "db_credentials_secret_arn" {
+  description = "ARN do segredo do RDS no Secrets Manager"
   type        = string
 }
 
-variable "supabase_key" {
-  description = "Chave do Supabase (API key)"
+variable "jwt_secret" {
+  description = "Segredo para assinar o JWT"
   type        = string
   sensitive   = true
 }

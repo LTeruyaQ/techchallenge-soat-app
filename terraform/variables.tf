@@ -16,13 +16,3 @@ variable "docker_image" {
   default     = "your-dockerhub-user/mecanicaos-api:latest"
 }
 
-variable "supabase_url" {
-  description = "URL do Supabase (banco de dados externo)"
-  type        = string
-}
-
-variable "supabase_key" {
-  description = "Chave do Supabase (API key)"
-  type        = string
-  sensitive   = true
-}

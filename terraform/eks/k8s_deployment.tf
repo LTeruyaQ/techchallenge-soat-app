@@ -1,11 +1,18 @@
-resource "kubernetes_secret" "supabase" {
+data "aws_secretsmanager_secret_version" "db_creds" {
+  secret_id = var.db_credentials_secret_arn
+}
+
+resource "kubernetes_secret" "api_secret" {
   metadata {
-    name = "supabase-secret"
+    name = "api-secret"
   }
 
   data = {
-    SUPABASE_URL = var.supabase_url
-    SUPABASE_KEY = var.supabase_key
+    # Acessado como ConnectionStrings__DefaultConnection no appsettings.json
+    "ConnectionStrings__DefaultConnection" = "Host=${jsondecode(data.aws_secretsmanager_secret_version.db_creds.secret_string)["host"]};Port=${jsondecode(data.aws_secretsmanager_secret_version.db_creds.secret_string)["port"]};Database=${jsondecode(data.aws_secretsmanager_secret_version.db_creds.secret_string)["dbname"]};Username=${jsondecode(data.aws_secretsmanager_secret_version.db_creds.secret_string)["username"]};Password=${jsondecode(data.aws_secretsmanager_secret_version.db_creds.secret_string)["password"]}"
+
+    # Acessado como Jwt:SecretKey no appsettings.json
+    "Jwt__SecretKey" = var.jwt_secret
   }
 }
 
@@ -42,7 +49,18 @@ resource "kubernetes_deployment" "mecanicaos_api" {
 
           env_from {
             secret_ref {
-              name = kubernetes_secret.supabase.metadata[0].name
+              name = kubernetes_secret.api_secret.metadata[0].name
+            }
+          }
+
+          resources {
+            requests = {
+              cpu    = "250m"
+              memory = "256Mi"
+            }
+            limits = {
+              cpu    = "500m"
+              memory = "512Mi"
             }
           }
         }
@@ -67,5 +85,24 @@ resource "kubernetes_service" "mecanicaos_service" {
     }
 
     type = "LoadBalancer"
+  }
+}
+
+resource "kubernetes_horizontal_pod_autoscaler" "mecanicaos_hpa" {
+  metadata {
+    name = "mecanicaos-hpa"
+  }
+
+  spec {
+    scale_target_ref {
+      api_version = "apps/v1"
+      kind        = "Deployment"
+      name        = kubernetes_deployment.mecanicaos_api.metadata[0].name
+    }
+
+    min_replicas = 1
+    max_replicas = 5
+
+    target_cpu_utilization_percentage = 50
   }
 }
