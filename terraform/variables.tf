@@ -125,12 +125,6 @@ variable "docker_image" {
   default     = "fthalita91/techchallenge-api:latest"
 }
 
-variable "docker_image_repo" {
-  description = "Nome do repositório ECR para a imagem Docker"
-  type        = string
-  default     = "mecanicaos-ecr"
-}
-
 variable "docker_image_tag" {
   description = "Tag da imagem Docker no ECR. Se vazio, usa timestamp automático."
   type        = string

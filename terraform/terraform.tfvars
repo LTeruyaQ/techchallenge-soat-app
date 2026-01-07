@@ -7,7 +7,7 @@ eks_cluster_role = "LabRole"
 eks_node_role    = "LabRole"
 
 # ECR
-docker_image_repo = "mecanicaos-ecr"
+# A variável docker_image_repo foi removida e não é mais necessária.
 docker_image_tag  = "20251230-170003"
 # docker_image_tag é gerado automaticamente pelo deploy-completo.ps1
 
