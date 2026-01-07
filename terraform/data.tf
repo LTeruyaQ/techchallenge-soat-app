@@ -40,7 +40,7 @@ data "aws_security_group" "eks_nodes" {
     name   = "tag:Name"
     values = ["${local.prefix}-eks-node-sg"]
   }
-  depends_on = [aws_eks_node_group.main]
+  depends_on = [aws_eks_node_group.nodes]
 }
 
 # Service do Kubernetes para a API (para obter o Load Balancer)

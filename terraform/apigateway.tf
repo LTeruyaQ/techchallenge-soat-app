@@ -46,7 +46,7 @@ resource "aws_apigatewayv2_route" "eks_proxy" {
   target    = "integrations/${aws_apigatewayv2_integration.eks.id}"
 }
 
-resource "aws_vpc_link" "eks" {
+resource "aws_apigatewayv2_vpc_link" "eks" {
   name               = "${local.prefix}-eks-vpc-link"
   security_group_ids = [data.aws_security_group.eks_nodes.id]
   subnet_ids         = data.aws_subnets.private.ids

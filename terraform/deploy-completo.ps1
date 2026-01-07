@@ -1,6 +1,6 @@
 # ============================================
 # Script de Deploy COMPLETO - MecanicaOS (AWS Academy)
-# Adaptado para automação total com RDS, Lambda e API Gateway
+# Versão Robusta com Tratamento de Erros
 # ============================================
 
 param(
@@ -12,6 +12,7 @@ param(
     [string]$ECR_REPO_NAME = "mecanicaos-ecr"
 )
 
+# Termina o script imediatamente se qualquer comando falhar
 $ErrorActionPreference = "Stop"
 
 # ======================================================
@@ -24,6 +25,14 @@ function Write-Warning($msg)  { Write-Host "[!] $msg" -ForegroundColor Yellow }
 function Write-ErrorMsg($msg) { Write-Host "[X] $msg" -ForegroundColor Red }
 function Write-Info($msg)     { Write-Host "    $msg" -ForegroundColor Gray }
 
+# Função para checar o resultado do último comando
+function Check-Last-Exit-Code {
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorMsg "Comando anterior falhou com código de saída $LASTEXITCODE. Abortando."
+        exit 1
+    }
+}
+
 # ======================================================
 # ETAPA 0: SANITY CHECK
 # ======================================================
@@ -35,6 +44,7 @@ if (-not (Test-Path ".\sanity-check.ps1")) {
 try {
     Write-Step "Executando sanity-check.ps1"
     .\sanity-check.ps1
+    Check-Last-Exit-Code
     Write-Success "Sanity check passou."
 } catch {
     Write-ErrorMsg "Sanity check falhou. Verifique se todas as dependências (AWS CLI, Terraform, kubectl, psql) estão instaladas e no PATH."
@@ -78,9 +88,9 @@ try {
 if ($Destroy) {
     Write-Title "MODO DESTROY"
     Write-Step "Inicializando o Terraform..."
-    terraform init
+    terraform init; Check-Last-Exit-Code
     Write-Step "Destruindo a infraestrutura..."
-    terraform destroy -auto-approve
+    terraform destroy -auto-approve; Check-Last-Exit-Code
     Write-Success "Infraestrutura destruída."
     exit 0
 }
@@ -88,9 +98,9 @@ if ($Destroy) {
 if ($Plan) {
     Write-Title "MODO PLAN"
     Write-Step "Inicializando o Terraform..."
-    terraform init
+    terraform init; Check-Last-Exit-Code
     Write-Step "Planejando as alterações..."
-    terraform plan
+    terraform plan; Check-Last-Exit-Code
     Write-Success "Plano gerado."
     exit 0
 }
@@ -103,19 +113,17 @@ if (-not $SkipInfra) {
 
     # Atribuição de Roles do AWS Academy
     Write-Step "Atribuindo Roles padrão do EKS (AWS Academy)..."
-    $clusterRole = "LabEksClusterRole"
-    $nodeRole    = "LabEksNodeRole"
-    Write-Success "Roles do EKS definidas: '$clusterRole' e '$nodeRole'."
-    $env:TF_VAR_eks_cluster_role = $clusterRole
-    $env:TF_VAR_eks_node_role    = $nodeRole
+    $env:TF_VAR_eks_cluster_role = "LabEksClusterRole"
+    $env:TF_VAR_eks_node_role    = "LabEksNodeRole"
+    Write-Success "Roles do EKS definidas: 'LabEksClusterRole' e 'LabEksNodeRole'."
 
     # Execução do Terraform
     Write-Step "Inicializando o Terraform..."
-    terraform init
+    terraform init; Check-Last-Exit-Code
     Write-Step "Validando a configuração..."
-    terraform validate
+    terraform validate; Check-Last-Exit-Code
     Write-Step "Aplicando a infraestrutura (EKS, RDS, Lambda, API GW)... Isso pode levar vários minutos."
-    terraform apply -auto-approve
+    terraform apply -auto-approve; Check-Last-Exit-Code
     Write-Success "Infraestrutura provisionada com sucesso."
 }
 
@@ -126,25 +134,26 @@ Write-Title "ETAPA 4: Configuração Pós-Provisionamento"
 
 # Configurar kubectl
 Write-Step "Configurando kubectl para o novo cluster EKS..."
-$EKS_CLUSTER_NAME = terraform output -raw eks_cluster_name
-aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
+$EKS_CLUSTER_NAME = terraform output -raw eks_cluster_name; Check-Last-Exit-Code
+aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME; Check-Last-Exit-Code
 Write-Success "kubectl configurado para o cluster '$EKS_CLUSTER_NAME'."
 
 # Inicialização do Banco de Dados RDS
 Write-Step "Inicializando o esquema do banco de dados RDS..."
 try {
-    $DB_ENDPOINT = terraform output -raw rds_endpoint
-    $DB_NAME = terraform output -raw rds_dbname
-    $DB_SECRET_ARN = terraform output -raw db_secret_arn
+    $DB_ENDPOINT = terraform output -raw rds_endpoint; Check-Last-Exit-Code
+    $DB_NAME = terraform output -raw rds_dbname; Check-Last-Exit-Code
+    $DB_SECRET_ARN = terraform output -raw db_secret_arn; Check-Last-Exit-Code
 
     Write-Info "Obtendo senha do RDS do Secrets Manager..."
-    $secretValue = aws secretsmanager get-secret-value --secret-id $DB_SECRET_ARN --query SecretString --output text | ConvertFrom-Json
+    $secretValueJson = aws secretsmanager get-secret-value --secret-id $DB_SECRET_ARN --query SecretString --output text; Check-Last-Exit-Code
+    $secretValue = $secretValueJson | ConvertFrom-Json
     $DB_USER = $secretValue.username
     $DB_PASSWORD = $secretValue.password
 
     Write-Info "Executando rds-init.sql no RDS..."
     $env:PGPASSWORD = $DB_PASSWORD
-    psql "host=$($DB_ENDPOINT.Split(':')[0]) port=$($DB_ENDPOINT.Split(':')[1]) dbname=$DB_NAME user=$DB_USER sslmode=require" -f ".\rds-init.sql"
+    psql "host=$($DB_ENDPOINT.Split(':')[0]) port=$($DB_ENDPOINT.Split(':')[1]) dbname=$DB_NAME user=$DB_USER sslmode=require" -f ".\rds-init.sql"; Check-Last-Exit-Code
     $env:PGPASSWORD = $null # Limpar a variável de ambiente
     Write-Success "Esquema do banco de dados inicializado com sucesso."
 } catch {
@@ -166,19 +175,19 @@ if (-not $SkipBuild) {
         exit 1
     }
 
-    $IMAGE_TAG = (git rev-parse --short HEAD)
-    $ECR_URI   = terraform output -raw ecr_repository_url
+    $IMAGE_TAG = (git rev-parse --short HEAD); Check-Last-Exit-Code
+    $ECR_URI   = terraform output -raw ecr_repository_url; Check-Last-Exit-Code
     $JOB_NAME  = "kaniko-build-$IMAGE_TAG"
     $NAMESPACE = "build"
 
     Write-Step "Aplicando namespace e segredos para o build..."
-    kubectl apply -f "..\k8s\namespace.yaml"
+    kubectl apply -f "..\k8s\namespace.yaml"; Check-Last-Exit-Code
     kubectl delete secret generic aws-creds -n $NAMESPACE --ignore-not-found | Out-Null
     kubectl create secret generic aws-creds `
         -n $NAMESPACE `
         --from-literal=AWS_ACCESS_KEY_ID=$env:AWS_ACCESS_KEY_ID `
         --from-literal=AWS_SECRET_ACCESS_KEY=$env:AWS_SECRET_ACCESS_KEY `
-        --from-literal=AWS_DEFAULT_REGION=$AWS_REGION | Out-Null
+        --from-literal=AWS_DEFAULT_REGION=$AWS_REGION; Check-Last-Exit-Code
 
     Write-Step "Criando e submetendo Job do Kaniko..."
 $jobYaml = @"
@@ -204,7 +213,7 @@ spec:
         - "--destination=${ECR_URI}:$IMAGE_TAG"
         - "--destination=${ECR_URI}:latest"
 "@
-    $jobYaml | kubectl apply -f -
+    $jobYaml | kubectl apply -f -; Check-Last-Exit-Code
     Write-Success "Job Kaniko '$JOB_NAME' submetido. Aguardando conclusão..."
 
     # Aguardar a conclusão do Job
