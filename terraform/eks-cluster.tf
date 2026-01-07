@@ -15,8 +15,8 @@ resource "aws_eks_cluster" "eks" {
   version  = "1.31"
 
   vpc_config {
-    subnet_ids         = aws_subnet.public[*].id
-    security_group_ids = [aws_security_group.eks.id]
+    subnet_ids         = concat(aws_subnet.public[*].id, aws_subnet.private[*].id)
+    security_group_ids = [aws_security_group.eks_cluster.id]
   }
 
   tags = {

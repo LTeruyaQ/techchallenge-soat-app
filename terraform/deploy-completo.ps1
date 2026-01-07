@@ -12,17 +12,22 @@ param(
     [string]$AwsRegion = "us-east-1"
 )
 
-# Encerra o script em caso de erro
-$ErrorActionPreference = "Stop"
-
 # ======================================================
-# FUNÇÕES DE LOG
+# FUNÇÕES DE LOG E CONTROLE
 # ======================================================
 function Write-Title($msg) { Write-Host "`n============================================" -ForegroundColor Cyan; Write-Host " $msg" -ForegroundColor Cyan; Write-Host "============================================" -ForegroundColor Cyan }
 function Write-Step($msg)  { Write-Host "`n==> $msg" -ForegroundColor Yellow }
 function Write-Success($msg) { Write-Host "[OK] $msg" -ForegroundColor Green }
-function Write-ErrorMsg($msg) { Write-Host "[X] $msg" -ForegroundColor Red }
+function Write-ErrorAndExit($msg) { Write-Host "[X] ERRO: $msg" -ForegroundColor Red; exit 1 }
 function Write-Info($msg)  { Write-Host "    $msg" }
+
+# Função para executar comandos e verificar o código de saída
+function Exec([scriptblock]$cmd, $errorMessage) {
+    & $cmd
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorAndExit "$errorMessage (Código de saída: $LASTEXITCODE)"
+    }
+}
 
 # ======================================================
 # ETAPA 0: VERIFICAÇÃO DE PRÉ-REQUISITOS
@@ -31,9 +36,9 @@ Write-Title "ETAPA 0: Verificando Pré-requisitos"
 
 $requiredCommands = @("aws", "terraform", "kubectl", "docker")
 foreach ($cmd in $requiredCommands) {
-    if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
-        Write-ErrorMsg "$cmd não encontrado no PATH. Por favor, instale-o."
-        exit 1
+    Get-Command $cmd -ErrorAction SilentlyContinue > $null
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorAndExit "$cmd não encontrado no PATH. Por favor, instale-o."
     }
 }
 Write-Success "Todas as ferramentas necessárias estão instaladas."
@@ -45,11 +50,10 @@ if ($Destroy) {
     Write-Title "MODO DESTROY"
     Write-Step "Executando terraform destroy..."
 
-    # Limpa o cache local do Terraform
     Remove-Item -Path ".terraform", ".terraform.lock.hcl" -Recurse -Force -ErrorAction SilentlyContinue
 
-    terraform init -reconfigure
-    terraform destroy -auto-approve
+    Exec { terraform init -reconfigure } "Falha ao inicializar o Terraform"
+    Exec { terraform destroy -auto-approve } "Falha ao destruir a infraestrutura"
 
     Write-Success "Infraestrutura destruída."
     exit 0
@@ -60,160 +64,113 @@ if ($Destroy) {
 # ======================================================
 Write-Title "ETAPA 2: Build e Push da Imagem Docker"
 
-# Valida se o Docker está rodando
 Write-Step "Verificando se o Docker Desktop está rodando..."
-try {
-    docker info > $null
-    Write-Success "Docker daemon está ativo."
-} catch {
-    Write-ErrorMsg "Docker não está rodando. Por favor, inicie o Docker Desktop e tente novamente."
-    throw
-}
+Exec { docker info } "O Docker não parece estar rodando. Por favor, inicie o Docker Desktop."
 
-# Obtém informações da conta AWS
-try {
-    $callerIdentity = aws sts get-caller-identity --output json | ConvertFrom-Json
-    $awsAccountId = $callerIdentity.Account
-    Write-Success "AWS Account ID: $awsAccountId"
-} catch {
-    Write-ErrorMsg "Credenciais AWS inválidas. Configure suas credenciais e tente novamente."
-    throw
-}
+Write-Step "Validando credenciais AWS..."
+$callerIdentityJson = Exec { aws sts get-caller-identity --output json } "Falha ao obter identidade do AWS CLI. Verifique suas credenciais."
+$callerIdentity = $callerIdentityJson | ConvertFrom-Json
+$awsAccountId = $callerIdentity.Account
+Write-Success "AWS Account ID: $awsAccountId"
 
 $ecrRepoName = "mecanicaos-ecr"
 $ecrRepoUrl = "${awsAccountId}.dkr.ecr.${AwsRegion}.amazonaws.com/${ecrRepoName}"
-$imageTag = (git rev-parse --short HEAD)
+$imageTag = Exec { git rev-parse --short HEAD } "Falha ao obter o hash do commit git."
 
-# Login no ECR
 Write-Step "Autenticando Docker no ECR..."
-try {
-    aws ecr get-login-password --region $AwsRegion | docker login --username AWS --password-stdin $ecrRepoUrl | Out-Null
-    Write-Success "Login no ECR bem-sucedido."
-} catch {
-    Write-ErrorMsg "Falha ao autenticar no ECR. Verifique suas permissões do IAM."
-    throw
-}
+Exec { aws ecr get-login-password --region $AwsRegion | docker login --username AWS --password-stdin $ecrRepoUrl } "Falha ao autenticar no ECR."
 
-# Cria o repositório ECR se não existir
 Write-Step "Verificando/Criando repositório ECR '$ecrRepoName'..."
-try {
-    aws ecr describe-repositories --repository-names $ecrRepoName --region $AwsRegion --output text > $null
+aws ecr describe-repositories --repository-names $ecrRepoName --region $AwsRegion --output text > $null
+if ($LASTEXITCODE -ne 0) {
+    Write-Info "Repositório não encontrado, criando..."
+    Exec { aws ecr create-repository --repository-name $ecrRepoName --region $AwsRegion --output text } "Falha ao criar o repositório ECR."
+} else {
     Write-Success "Repositório ECR já existe."
-} catch {
-    try {
-        Write-Info "Repositório não encontrado, criando..."
-        aws ecr create-repository --repository-name $ecrRepoName --region $AwsRegion --output text > $null
-        Write-Success "Repositório ECR criado."
-    } catch {
-        Write-ErrorMsg "Falha ao criar o repositório ECR."
-        throw
-    }
 }
 
-# Build e Push da Imagem
 Write-Step "Construindo e enviando a imagem Docker (Tag: $imageTag)..."
-try {
-    cd .. # Sobe para a raiz do projeto
-    docker build -t "${ecrRepoUrl}:${imageTag}" .
-    docker tag "${ecrRepoUrl}:${imageTag}" "${ecrRepoUrl}:latest"
-    docker push "${ecrRepoUrl}:${imageTag}"
-    docker push "${ecrRepoUrl}:latest"
-    cd terraform # Volta para o diretório
-    Write-Success "Build e Push concluídos."
-} catch {
-    Write-ErrorMsg "Falha durante o build ou push da imagem Docker."
-    cd terraform # Garante que estamos no diretório certo em caso de falha
-    throw
-}
+cd ..
+Exec { docker build -t "${ecrRepoUrl}:${imageTag}" . } "Falha ao construir a imagem Docker."
+Exec { docker tag "${ecrRepoUrl}:${imageTag}" "${ecrRepoUrl}:latest" } "Falha ao criar a tag 'latest'."
+Exec { docker push "${ecrRepoUrl}:${imageTag}" } "Falha ao enviar a imagem para o ECR (tag: $imageTag)."
+Exec { docker push "${ecrRepoUrl}:latest" } "Falha ao enviar a imagem para o ECR (tag: latest)."
+cd terraform
+Write-Success "Build e Push concluídos."
 
 # ======================================================
 # ETAPA 3: DEPLOY DA INFRAESTRUTURA (TERRAFORM)
 # ======================================================
 Write-Title "ETAPA 3: Deploy da Infraestrutura com Terraform"
 
-# Limpa o cache local do Terraform para garantir um estado limpo
 Remove-Item -Path ".terraform", ".terraform.lock.hcl" -Recurse -Force -ErrorAction SilentlyContinue
 
-try {
-    Write-Step "Executando terraform init..."
-    terraform init -reconfigure
+Write-Step "Executando terraform init..."
+Exec { terraform init -reconfigure } "Falha ao inicializar o Terraform."
 
-    Write-Step "Executando terraform apply..."
-    $tfVars = @{
-        "docker_image_repo" = $ecrRepoUrl
-        "docker_image_tag" = $imageTag
-    }
-
-    # Converte o hashtable para uma string de argumentos -var
-    $varString = ($tfVars.GetEnumerator() | ForEach-Object { "-var=`"$($_.Key)=$($_.Value)`"" }) -join " "
-
-    terraform apply -auto-approve $varString
-    Write-Success "Infraestrutura implantada com sucesso."
-} catch {
-    Write-ErrorMsg "Falha durante a execução do Terraform. A infraestrutura pode estar em um estado parcial."
-    throw
+Write-Step "Executando terraform apply..."
+$tfVars = @{
+    "docker_image_repo" = $ecrRepoUrl
+    "docker_image_tag" = $imageTag
 }
+$varString = ($tfVars.GetEnumerator() | ForEach-Object { "-var=`"$($_.Key)=$($_.Value)`"" }) -join " "
+Exec { terraform apply -auto-approve $varString } "Falha ao aplicar a configuração do Terraform."
+Write-Success "Infraestrutura implantada com sucesso."
 
 # ======================================================
-# ETAPA 4: CONFIGURAÇÃO DO KUBECTL E DEPLOY K8S
+# ETAPA 4: DEPLOY NO KUBERNETES
 # ======================================================
 Write-Title "ETAPA 4: Deploy no Kubernetes"
 
-try {
-    Write-Step "Configurando Kubeconfig..."
-    $eksClusterName = terraform output -raw eks_cluster_name
-    aws eks update-kubeconfig --region $AwsRegion --name $eksClusterName
-    Write-Success "Kubeconfig atualizado para o cluster '$eksClusterName'."
+Write-Step "Configurando Kubeconfig..."
+$eksClusterName = Exec { terraform output -raw eks_cluster_name } "Falha ao obter o nome do cluster EKS do Terraform."
+Exec { aws eks update-kubeconfig --region $AwsRegion --name $eksClusterName } "Falha ao configurar o kubeconfig."
 
-    Write-Step "Obtendo connection string do RDS..."
-    $dbPassword = terraform output -raw rds_master_password
-    $dbHost = terraform output -raw rds_hostname
-    $dbPort = terraform output -raw rds_port
-    $dbUsername = terraform output -raw rds_username
-    $dbName = "postgres"
-    $connectionString = "Host=${dbHost};Port=${dbPort};Database=${dbName};Username=${dbUsername};Password=${dbPassword}"
+Write-Step "Obtendo connection string do RDS..."
+$dbPassword = Exec { terraform output -raw rds_master_password } "Falha ao obter a senha do RDS."
+$dbHost = Exec { terraform output -raw rds_hostname } "Falha ao obter o hostname do RDS."
+$dbPort = Exec { terraform output -raw rds_port } "Falha ao obter a porta do RDS."
+$dbUsername = Exec { terraform output -raw rds_username } "Falha ao obter o usuário do RDS."
+$dbName = "postgres"
+$connectionString = "Host=${dbHost};Port=${dbPort};Database=${dbName};Username=${dbUsername};Password=${dbPassword}"
 
-    Write-Step "Aplicando manifestos no Kubernetes..."
-    kubectl apply -f ../k8s/namespace.yaml
+Write-Step "Aplicando manifestos no Kubernetes..."
+Exec { kubectl apply -f ../k8s/namespace.yaml } "Falha ao aplicar o namespace."
 
-    kubectl create secret generic api-secret `
-        --from-literal=ConnectionStrings__DefaultConnection=$connectionString `
-        --namespace=mecanicaos `
-        --dry-run=client -o yaml | kubectl apply -f -
+Exec { kubectl create secret generic api-secret --from-literal=ConnectionStrings__DefaultConnection=$connectionString --namespace=mecanicaos --dry-run=client -o yaml | kubectl apply -f - } "Falha ao criar o secret da API."
 
-    $k8sDir = "..\k8s"
-    $deploymentTemplate = Get-Content -Path "$k8sDir\api-deployment.yaml" -Raw
-    $deploymentContent = $deploymentTemplate -replace '\${docker_image}', "${ecrRepoUrl}:${imageTag}"
+$k8sDir = "..\k8s"
+$deploymentTemplate = Get-Content -Path "$k8sDir\api-deployment.yaml" -Raw
+$deploymentContent = $deploymentTemplate -replace '\${docker_image}', "${ecrRepoUrl}:${imageTag}"
 
-    Get-ChildItem -Path $k8sDir -Filter "*.yaml" | ForEach-Object {
-        if ($_.Name -ne "api-deployment.yaml" -and $_.Name -ne "namespace.yaml") {
-            kubectl apply -f $_.FullName
-        }
+Get-ChildItem -Path $k8sDir -Filter "*.yaml" | ForEach-Object {
+    if ($_.Name -ne "api-deployment.yaml" -and $_.Name -ne "namespace.yaml") {
+        Exec { kubectl apply -f $_.FullName } "Falha ao aplicar o manifesto $($_.Name)."
     }
-
-    $deploymentContent | kubectl apply -f -
-    Write-Success "Aplicação implantada no Kubernetes."
-
-} catch {
-    Write-ErrorMsg "Falha durante o deploy no Kubernetes. Verifique a conexão com o cluster e os logs do kubectl."
-    throw
 }
 
+Exec { $deploymentContent | kubectl apply -f - } "Falha ao aplicar o deployment da API."
+Write-Success "Aplicação implantada no Kubernetes."
+
 # ======================================================
-# ETAPA 6: INFORMAÇÕES FINAIS
+# ETAPA 5: RESUMO DO DEPLOY
 # ======================================================
-Write-Title "ETAPA 6: Deploy Concluído!"
+Write-Title "ETAPA 5: Resumo do Deploy"
 
-$apiUrl = terraform output -raw api_gateway_invoke_url
-$swaggerUrl = "${apiUrl}/docs/v1/swagger.json" # Corrigir a URL do swagger
+Write-Step "Obtendo informações dos recursos criados..."
 
-Write-Host "URL da API Gateway:" -ForegroundColor Green
-Write-Host $apiUrl
+$apiUrl = Exec { terraform output -raw api_gateway_invoke_url } "Falha ao obter a URL do API Gateway."
+$eksClusterName = Exec { terraform output -raw eks_cluster_name } "Falha ao obter o nome do cluster EKS."
+$rdsHostname = Exec { terraform output -raw rds_hostname } "Falha ao obter o hostname do RDS."
 
-Write-Host "`nSwagger UI:" -ForegroundColor Green
-Write-Host "${apiUrl}/docs" # URL correta da UI
-
-Write-Host "`n--------------------------------------------------"
-Write-Host "Aguarde alguns minutos para que o Load Balancer e os pods sejam inicializados."
+Write-Success "Deploy finalizado com sucesso!"
+Write-Host "--------------------------------------------------"
+Write-Host "  Recursos Criados:"
+Write-Host "  - EKS Cluster Name: " -NoNewline; Write-Host $eksClusterName -ForegroundColor Yellow
+Write-Host "  - RDS Endpoint:     " -NoNewline; Write-Host $rdsHostname -ForegroundColor Yellow
+Write-Host "  - API Gateway URL:  " -NoNewline; Write-Host $apiUrl -ForegroundColor Yellow
+Write-Host "  - Swagger UI:       " -NoNewline; Write-Host "${apiUrl}/docs" -ForegroundColor Yellow
+Write-Host "--------------------------------------------------"
+Write-Host "`nAguarde alguns minutos para que o Load Balancer e os pods sejam inicializados."
 Write-Host "Use 'kubectl get pods -n mecanicaos -w' para monitorar."
 Write-Host "--------------------------------------------------"
