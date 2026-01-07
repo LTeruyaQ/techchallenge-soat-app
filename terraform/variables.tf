@@ -47,16 +47,16 @@ variable "availability_zones" {
 # IMPORTANTE:
 # Essas variáveis NÃO possuem default.
 # O script de deploy detecta automaticamente
-# e exporta via TF_VAR_eks_cluster_role e TF_VAR_eks_node_role
+# e exporta via TF_VAR_eks_cluster_role_name e TF_VAR_eks_node_role_name
 #
 
-variable "eks_cluster_role" {
-  description = "IAM Role do Cluster EKS detectada automaticamente pelo script"
+variable "eks_cluster_role_name" {
+  description = "Nome da IAM Role do Cluster EKS (detectada automaticamente)"
   type        = string
 }
 
-variable "eks_node_role" {
-  description = "IAM Role do NodeGroup do EKS detectada automaticamente pelo script"
+variable "eks_node_role_name" {
+  description = "Nome da IAM Role do NodeGroup do EKS (detectada automaticamente)"
   type        = string
 }
 
@@ -98,66 +98,48 @@ variable "replicas" {
   default     = 2
 }
 
-variable "docker_image" {
-  description = "Imagem Docker do MecanicaOS API"
-  type        = string
-  default     = "fthalita91/techchallenge-api:latest"
-}
-
 variable "docker_image_repo" {
   description = "Nome do repositório ECR para a imagem Docker"
   type        = string
   default     = "mecanicaos-ecr"
 }
 
-variable "docker_image_tag" {
-  description = "Tag da imagem Docker no ECR. Se vazio, usa timestamp automático."
+variable "docker_image_url" {
+  description = "URL completa da imagem Docker no ECR (passada pelo script de deploy)"
   type        = string
-  default     = ""
 }
 
 # ============================================
-# Variáveis do Banco de Dados (Supabase)
+# Variáveis do Banco de Dados (RDS)
 # ============================================
 
-variable "db_host" {
-  description = "Host do banco de dados PostgreSQL (Supabase)"
+variable "rds_instance_class" {
+  description = "Classe da instância RDS PostgreSQL (deve ser a menor possível para AWS Academy)"
   type        = string
+  default     = "db.t3.micro"
 }
 
-variable "db_port" {
-  description = "Porta do banco de dados"
-  type        = string
-  default     = "5432"
+variable "rds_allocated_storage" {
+  description = "Espaço alocado para o RDS em GB"
+  type        = number
+  default     = 20
 }
 
-variable "db_name" {
-  description = "Nome do banco de dados"
+variable "rds_engine_version" {
+  description = "Versão do motor PostgreSQL"
   type        = string
-  default     = "postgres"
+  default     = "15.3"
 }
 
-variable "db_username" {
-  description = "Usuário do banco de dados"
+variable "rds_database_name" {
+  description = "Nome do banco de dados inicial a ser criado no RDS"
   type        = string
-  default     = "postgres"
-}
-
-variable "db_password" {
-  description = "Senha do banco de dados"
-  type        = string
-  sensitive   = true
+  default     = "mecanicaosdb"
 }
 
 # ============================================
-# Variáveis do JWT
+# Variáveis do JWT (gerenciado via Secrets Manager)
 # ============================================
-
-variable "jwt_secret_key" {
-  description = "Chave secreta para geração de tokens JWT"
-  type        = string
-  sensitive   = true
-}
 
 variable "jwt_issuer" {
   description = "Emissor do token JWT"
@@ -178,7 +160,7 @@ variable "jwt_expiry_minutes" {
 }
 
 # ============================================
-# Variáveis do OpenTelemetry
+# Variáveis do OpenTelemetry (NÃO ALTERAR)
 # ============================================
 
 variable "otel_service_name" {
@@ -191,16 +173,4 @@ variable "otel_exporter_otlp_endpoint" {
   description = "Endpoint do OpenTelemetry Collector"
   type        = string
   default     = "http://otel-collector.observability:4317"
-}
-
-variable "datadog_api_key" {
-  description = "API Key do Datadog"
-  type        = string
-  sensitive   = true
-}
-
-variable "newrelic_license_key" {
-  description = "License Key do New Relic"
-  type        = string
-  sensitive   = true
 }

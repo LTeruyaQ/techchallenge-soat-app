@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: mecanicaos-service
+  name: mecanicaos-api-service
   namespace: mecanicaos
   labels:
     app: mecanicaos-api

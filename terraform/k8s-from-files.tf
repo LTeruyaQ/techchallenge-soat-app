@@ -11,26 +11,56 @@
 locals {
   k8s_template_vars = {
     replicas                    = var.replicas
-    docker_image                = local.docker_image
+    docker_image                = var.docker_image_url
     environment                 = var.environment
     db_connection_string        = local.db_connection_string
-    jwt_secret_key              = var.jwt_secret_key
+    jwt_secret_key              = local.jwt_secret.secret_key
     jwt_issuer                  = var.jwt_issuer
     jwt_audience                = var.jwt_audience
     jwt_expiry_minutes          = var.jwt_expiry_minutes
     otel_service_name           = var.otel_service_name
     otel_exporter_otlp_endpoint = var.otel_exporter_otlp_endpoint
   }
-
-  otel_template_vars = {
-    environment          = var.environment
-    datadog_api_key      = var.datadog_api_key
-    newrelic_license_key = var.newrelic_license_key
-  }
 }
 
-# Namespace
-resource "kubectl_manifest" "k8s_namespace" {
+# Manifest unificado para a aplicação
+resource "kubectl_manifest" "app" {
+  depends_on = [
+    aws_eks_cluster.eks,
+    aws_eks_node_group.nodes,
+    aws_eks_access_entry.lab_role,
+    aws_eks_access_policy_association.lab_role_admin,
+    aws_db_instance.postgres # Garante que o BD esteja pronto
+  ]
+
+  yaml_body = <<-YAML
+    ---
+    ${templatefile("${path.module}/../k8s/namespace.yaml", {})}
+    ---
+    ${templatefile("${path.module}/../k8s/api-configmap.yaml", local.k8s_template_vars)}
+    ---
+    ${templatefile("${path.module}/../k8s/api-secret.yaml", local.k8s_template_vars)}
+    ---
+    ${templatefile("${path.module}/../k8s/api-deployment.yaml", local.k8s_template_vars)}
+    ---
+    ${templatefile("${path.module}/../k8s/api-service.yaml", {})}
+    ---
+    ${templatefile("${path.module}/../k8s/api-hpa.yaml", {})}
+  YAML
+}
+
+# ============================================
+# OpenTelemetry Collector Resources (Opcional)
+# ============================================
+#
+# A criação destes recursos continua, mas o deploy principal
+# não vai falhar se a observabilidade não estiver configurada.
+# O status será informado no final pelo script de deploy.
+#
+# ============================================
+
+# Manifest unificado para observabilidade
+resource "kubectl_manifest" "observability" {
   depends_on = [
     aws_eks_cluster.eks,
     aws_eks_node_group.nodes,
@@ -38,92 +68,16 @@ resource "kubectl_manifest" "k8s_namespace" {
     aws_eks_access_policy_association.lab_role_admin
   ]
 
-  yaml_body = file("${path.module}/../k8s/namespace.yaml")
-}
-
-# ConfigMap
-resource "kubectl_manifest" "k8s_configmap" {
-  depends_on = [kubectl_manifest.k8s_namespace]
-
-  yaml_body = templatefile("${path.module}/../k8s/api-configmap.yaml", local.k8s_template_vars)
-}
-
-# Secret
-resource "kubectl_manifest" "k8s_secret" {
-  depends_on = [kubectl_manifest.k8s_namespace]
-
-  yaml_body = templatefile("${path.module}/../k8s/api-secret.yaml", local.k8s_template_vars)
-}
-
-# Deployment
-resource "kubectl_manifest" "k8s_deployment" {
-  depends_on = [
-    kubectl_manifest.k8s_namespace,
-    kubectl_manifest.k8s_configmap,
-    kubectl_manifest.k8s_secret
-  ]
-
-  yaml_body = templatefile("${path.module}/../k8s/api-deployment.yaml", local.k8s_template_vars)
-}
-
-# Service
-resource "kubectl_manifest" "k8s_service" {
-  depends_on = [kubectl_manifest.k8s_deployment]
-
-  yaml_body = file("${path.module}/../k8s/api-service.yaml")
-}
-
-# HPA
-resource "kubectl_manifest" "k8s_hpa" {
-  depends_on = [kubectl_manifest.k8s_deployment]
-
-  yaml_body = file("${path.module}/../k8s/api-hpa.yaml")
-}
-
-# ============================================
-# OpenTelemetry Collector Resources
-# ============================================
-
-# Observability Namespace
-resource "kubectl_manifest" "otel_namespace" {
-  depends_on = [
-    aws_eks_cluster.eks,
-    aws_eks_node_group.nodes,
-    aws_eks_access_entry.lab_role,
-    aws_eks_access_policy_association.lab_role_admin
-  ]
-
-  yaml_body = file("${path.module}/../k8s/observability-namespace.yaml")
-}
-
-# OTEL Collector Secret
-resource "kubectl_manifest" "otel_collector_secret" {
-  depends_on = [kubectl_manifest.otel_namespace]
-
-  yaml_body = templatefile("${path.module}/../k8s/otel-collector-secret.yaml", local.otel_template_vars)
-}
-
-# OTEL Collector ConfigMap
-resource "kubectl_manifest" "otel_collector_configmap" {
-  depends_on = [kubectl_manifest.otel_namespace]
-
-  yaml_body = templatefile("${path.module}/../k8s/otel-collector-configmap.yaml", local.otel_template_vars)
-}
-
-# OTEL Collector Deployment
-resource "kubectl_manifest" "otel_collector_deployment" {
-  depends_on = [
-    kubectl_manifest.otel_namespace,
-    kubectl_manifest.otel_collector_secret,
-    kubectl_manifest.otel_collector_configmap
-  ]
-
-  yaml_body = file("${path.module}/../k8s/otel-collector-deployment.yaml")
-}
-
-# OTEL Collector Service
-resource "kubectl_manifest" "otel_collector_service" {
-  depends_on = [kubectl_manifest.otel_collector_deployment]
-
-  yaml_body = file("${path.module}/../k8s/otel-collector-service.yaml")
+  yaml_body = <<-YAML
+    ---
+    ${templatefile("${path.module}/../k8s/observability-namespace.yaml", {})}
+    ---
+    ${templatefile("${path.module}/../k8s/otel-collector-configmap.yaml", { environment = var.environment })}
+    ---
+    ${templatefile("${path.module}/../k8s/otel-collector-secret.yaml", {})}
+    ---
+    ${templatefile("${path.module}/../k8s/otel-collector-deployment.yaml", {})}
+    ---
+    ${templatefile("${path.module}/../k8s/otel-collector-service.yaml", {})}
+  YAML
 }

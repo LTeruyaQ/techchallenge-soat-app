@@ -3,15 +3,15 @@
 # ============================================
 
 locals {
-  # String de conexão do banco de dados (Supabase)
-  db_connection_string = "Host=${var.db_host};Port=${var.db_port};Database=${var.db_name};Username=${var.db_username};Password=${var.db_password};SSL Mode=Require;Trust Server Certificate=true"
-
   # Account ID
   account_id = data.aws_caller_identity.current.account_id
 
-  # Tag da imagem Docker - usa variável se fornecida, senão usa "latest"
-  docker_image_tag = var.docker_image_tag != "" ? var.docker_image_tag : "latest"
+  # Extrai as credenciais do RDS do segredo no Secrets Manager
+  rds_credentials = jsondecode(aws_secretsmanager_secret_version.rds_credentials.secret_string)
 
-  # Imagem Docker no ECR
-  docker_image = "${local.account_id}.dkr.ecr.${var.aws_region}.amazonaws.com/${var.docker_image_repo}:${local.docker_image_tag}"
+  # Extrai a chave secreta JWT do segredo no Secrets Manager
+  jwt_secret = jsondecode(aws_secretsmanager_secret_version.jwt_key.secret_string)
+
+  # String de conexão do banco de dados (RDS)
+  db_connection_string = "Host=${aws_db_instance.postgres.address};Port=${aws_db_instance.postgres.port};Database=${aws_db_instance.postgres.db_name};Username=${local.rds_credentials.username};Password=${local.rds_credentials.password};"
 }
