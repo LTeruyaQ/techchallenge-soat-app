@@ -4,7 +4,7 @@
 
 locals {
   # Prefixo para todos os recursos para garantir nomes únicos
-  prefix = var.ecr_repo_name
+  prefix = var.project_name
   # String de conexão do banco de dados (Supabase)
   db_connection_string = "Host=${var.db_host};Port=${var.db_port};Database=${var.db_name};Username=${var.db_username};Password=${var.db_password};SSL Mode=Require;Trust Server Certificate=true"
 

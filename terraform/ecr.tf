@@ -2,8 +2,12 @@
 # ECR Repository
 # ============================================
 
+resource "random_id" "ecr_suffix" {
+  byte_length = 4
+}
+
 resource "aws_ecr_repository" "app" {
-  name         = var.docker_image_repo
+  name         = "${var.docker_image_repo}-${random_id.ecr_suffix.hex}"
   force_delete = true
 
   image_scanning_configuration {
@@ -13,10 +17,5 @@ resource "aws_ecr_repository" "app" {
   tags = {
     Project = var.project_name
     Env     = var.environment
-  }
-
-  lifecycle {
-    # Ignora se o repositório já existir (evita erro de conflito)
-    ignore_changes = [name]
   }
 }
