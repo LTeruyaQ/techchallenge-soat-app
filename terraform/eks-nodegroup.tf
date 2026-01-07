@@ -4,30 +4,20 @@
 
 resource "aws_eks_node_group" "nodes" {
   cluster_name    = aws_eks_cluster.eks.name
-  node_group_name = "nodegroup-${var.project_name}"
-
-  # Usando role do AWS Academy
-  node_role_arn = data.aws_iam_role.eks_node_role.arn
-
-  subnet_ids     = aws_subnet.public[*].id
-  disk_size      = 50
-  instance_types = var.instance_types
+  node_group_name = "${var.project_name}-nodes"
+  node_role_arn   = data.aws_iam_role.eks_node_role.arn
+  subnet_ids      = aws_subnet.private[*].id
+  instance_types  = ["t3.small"]
 
   scaling_config {
-    desired_size = var.node_desired_size
-    max_size     = var.node_max_size
-    min_size     = var.node_min_size
+    desired_size = 2
+    max_size     = 3
+    min_size     = 1
   }
 
-  update_config {
-    max_unavailable = 1
-  }
+  vpc_security_group_ids = [aws_security_group.eks_nodes.id]
 
-  tags = {
-    Name    = "nodegroup-${var.project_name}"
-    Project = "MecanicaOS"
-  }
-
-  # AWS Academy: LabRole já vem com as policies necessárias
-  depends_on = [aws_eks_cluster.eks]
+  depends_on = [
+    aws_eks_cluster.eks
+  ]
 }

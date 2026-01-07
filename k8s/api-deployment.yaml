@@ -1,32 +1,30 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mecanicaos-api
-  namespace: mecanicaos
-  labels:
-    app: mecanicaos-api
+  name: mecanica-os-api-deployment
+  namespace: mecanica-os
 spec:
-  replicas: ${replicas}
+  replicas: 1
   selector:
     matchLabels:
-      app: mecanicaos-api
+      app: mecanica-os-api
   template:
     metadata:
       labels:
-        app: mecanicaos-api
+        app: mecanica-os-api
     spec:
       containers:
-        - name: mecanicaos-api
-          image: ${docker_image}
+        - name: mecanica-os-api
+          image: <ECR_REPOSITORY_URL>:<IMAGE_TAG>
           ports:
-            - containerPort: 80
+            - containerPort: 8080
           envFrom:
-            - configMapRef:
-                name: api-configmap
             - secretRef:
                 name: api-secret
           resources:
             requests:
-              cpu: 100m
+              cpu: "100m"
+              memory: "128Mi"
             limits:
-              cpu: 500m
+              cpu: "200m"
+              memory: "256Mi"
