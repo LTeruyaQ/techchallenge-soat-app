@@ -18,13 +18,13 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
 resource "aws_security_group" "rds" {
   name        = "${local.prefix}-rds-sg"
   description = "Allow access to RDS from Lambda and EKS"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = aws_vpc.main.id
 
   ingress {
     from_port       = 5432
     to_port         = 5432
     protocol        = "tcp"
-    security_groups = [data.aws_security_group.eks_nodes.id]
+    security_groups = [aws_security_group.eks_nodes.id]
   }
 
   ingress {

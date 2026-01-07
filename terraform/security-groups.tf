@@ -2,32 +2,23 @@
 # Security Groups
 # ============================================
 
-resource "aws_security_group" "eks" {
-  name        = "${var.project_name}-sg"
-  description = "Security group para EKS e services"
+resource "aws_security_group" "eks_cluster" {
+  name        = "${local.prefix}-eks-cluster-sg"
+  description = "Security group para o control plane do EKS"
   vpc_id      = aws_vpc.main.id
 
-  # HTTP
-  ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+  tags = {
+    Name = "${local.prefix}-eks-cluster-sg"
   }
+}
 
-  # HTTPS
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
+resource "aws_security_group" "eks_nodes" {
+  name        = "${local.prefix}-eks-node-sg"
+  description = "Security group para os nós do EKS"
+  vpc_id      = aws_vpc.main.id
 
-  # Egress - permitir todo tráfego de saída
+  # Permite todo o tráfego de saída
   egress {
-    description = "All outbound"
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -35,7 +26,7 @@ resource "aws_security_group" "eks" {
   }
 
   tags = {
-    Name    = "${var.project_name}-sg"
-    Project = "MecanicaOS"
+    "Name"                                      = "${local.prefix}-eks-node-sg"
+    "kubernetes.io/cluster/${local.prefix}-eks" = "owned"
   }
 }
