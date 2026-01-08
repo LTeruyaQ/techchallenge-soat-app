@@ -4,8 +4,8 @@
 
 resource "aws_security_group" "eks_cluster" {
   name        = "${local.prefix}-eks-cluster-sg"
-  description = "Security group para o control plane do EKS"
-  vpc_id      = aws_vpc.main.id
+  description = "Security group for EKS control plane"
+  vpc_id      = data.aws_vpc.lab_vpc.id
 
   tags = {
     Name = "${local.prefix}-eks-cluster-sg"
@@ -14,8 +14,8 @@ resource "aws_security_group" "eks_cluster" {
 
 resource "aws_security_group" "eks_nodes" {
   name        = "${local.prefix}-eks-node-sg"
-  description = "Security group para os nós do EKS"
-  vpc_id      = aws_vpc.main.id
+  description = "Security group for EKS nodes"
+  vpc_id      = data.aws_vpc.lab_vpc.id
 
   # Permite todo o tráfego de saída
   egress {
