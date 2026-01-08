@@ -40,110 +40,66 @@ variable "availability_zones" {
   default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
 }
 
+variable "vpc_id" {
+  description = "ID da VPC a ser usada. Se fornecido, o Terraform buscará subnets dentro dela."
+  type        = string
+  default     = ""
+}
+
 # ============================================
 # Variáveis IAM - AWS Academy
 # ============================================
-#
-# IMPORTANTE:
-# Essas variáveis NÃO possuem default.
-# O script de deploy detecta automaticamente
-# e exporta via TF_VAR_eks_cluster_role e TF_VAR_eks_node_role
-#
 
 variable "eks_cluster_role" {
-  description = "IAM Role do Cluster EKS detectada automaticamente pelo script"
+  description = "IAM Role do Cluster EKS (fixo no AWS Academy)"
   type        = string
+  default     = "LabEksClusterRole"
 }
 
 variable "eks_node_role" {
-  description = "IAM Role do NodeGroup do EKS detectada automaticamente pelo script"
+  description = "IAM Role do NodeGroup do EKS (fixo no AWS Academy)"
   type        = string
+  default     = "LabEksNodeRole"
 }
 
-variable "lab_role" {
-  description = "IAM Role do Laboratório AWS Academy"
+variable "skip_create_eks" {
+  description = "Se verdadeiro, pula a criação do cluster EKS e usa o existente."
+  type        = bool
+  default     = false
+}
+
+variable "use_existing_lambda_role" {
+  description = "Controla o uso de uma IAM Role existente para a Lambda. Valores: 'true', 'false', 'unknown'."
   type        = string
-  default     = "LabRole"
+  default     = "false"
 }
 
-# ============================================
-# Variáveis do EKS
-# ============================================
-
-variable "instance_types" {
-  description = "Tipos de instância EC2 para os nodes"
-  type        = list(string)
-  default     = ["t3.medium"]
-}
-
-variable "node_desired_size" {
-  description = "Número desejado de nodes"
-  type        = number
-  default     = 2
-}
-
-variable "node_max_size" {
-  description = "Número máximo de nodes"
-  type        = number
-  default     = 3
-}
-
-variable "node_min_size" {
-  description = "Número mínimo de nodes"
-  type        = number
-  default     = 1
-}
-
-# ============================================
-# Variáveis do ECR
-# ============================================
-
-# A variável ecr_repo_name foi removida. O nome agora é fixo
-# O build da imagem foi desativado para contornar restrições do ECR.
-# A imagem pública será usada diretamente.
-# ============================================
-
-variable "alb_hostname" {
-  description = "Hostname do Application Load Balancer (ALB) criado pelo Ingress do EKS. Usado na segunda fase do apply."
+variable "lambda_role_name" {
+  description = "Nome da IAM Role existente para a Lambda, se aplicável."
   type        = string
   default     = ""
 }
 
-# ============================================
-# Variáveis do Kubernetes
-# ============================================
+# ... (outras variáveis permanecem como estão)
 
-variable "replicas" {
-  description = "Número de réplicas do deployment"
-  type        = number
-  default     = 2
-}
-
-variable "docker_image" {
-  description = "Imagem Docker do MecanicaOS API"
+variable "datadog_api_key" {
+  description = "API Key do Datadog"
   type        = string
-  default     = "fthalita91/techchallenge-api:latest"
-}
-
-variable "docker_image_repo" {
-  description = "Nome do repositório ECR para a imagem Docker"
-  type        = string
-  default     = "mecanicaos-ecr"
-}
-
-variable "docker_image_tag" {
-  description = "Tag da imagem Docker no ECR. Se vazio, usa timestamp automático."
-  type        = string
+  sensitive   = true
   default     = ""
 }
 
-# ============================================
-# Variáveis do Banco de Dados (Supabase)
-# ============================================
+variable "newrelic_license_key" {
+  description = "License Key do New Relic"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
 
 variable "db_host" {
-  description = "Host do banco de dados PostgreSQL (Supabase)"
+  description = "Host do banco de dados"
   type        = string
+  default     = ""
 }
 
 variable "db_port" {
@@ -168,39 +124,57 @@ variable "db_password" {
   description = "Senha do banco de dados"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
-# ============================================
-# Variáveis do JWT
-# ============================================
+variable "docker_image" {
+  description = "Imagem Docker da aplicação"
+  type        = string
+  default     = "fthalita91/techchallenge-api:latest"
+}
+
+variable "lab_role" {
+  description = "IAM Role do Laboratório AWS Academy"
+  type        = string
+  default     = "LabRole"
+}
+
+variable "alb_hostname" {
+  description = "Hostname do Application Load Balancer (ALB)"
+  type        = string
+  default     = ""
+}
+
+variable "replicas" {
+  description = "Número de réplicas do deployment"
+  type        = number
+  default     = 2
+}
 
 variable "jwt_secret_key" {
-  description = "Chave secreta para geração de tokens JWT"
+  description = "Chave secreta para JWT"
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "jwt_issuer" {
-  description = "Emissor do token JWT"
+  description = "Emissor do JWT"
   type        = string
   default     = "MecanicaOS"
 }
 
 variable "jwt_audience" {
-  description = "Audiência do token JWT"
+  description = "Audiência do JWT"
   type        = string
   default     = "MecanicaOS-API"
 }
 
 variable "jwt_expiry_minutes" {
-  description = "Tempo de expiração do token JWT em minutos"
+  description = "Tempo de expiração do JWT em minutos"
   type        = number
   default     = 120
 }
-
-# ============================================
-# Variáveis do OpenTelemetry
-# ============================================
 
 variable "otel_service_name" {
   description = "Nome do serviço para OpenTelemetry"
@@ -214,14 +188,26 @@ variable "otel_exporter_otlp_endpoint" {
   default     = "http://otel-collector.observability:4317"
 }
 
-variable "datadog_api_key" {
-  description = "API Key do Datadog"
-  type        = string
-  sensitive   = true
+variable "instance_types" {
+  description = "Tipos de instância para os nós do EKS"
+  type        = list(string)
+  default     = ["t3.medium"]
 }
 
-variable "newrelic_license_key" {
-  description = "License Key do New Relic"
-  type        = string
-  sensitive   = true
+variable "node_desired_size" {
+  description = "Número desejado de nós"
+  type        = number
+  default     = 2
+}
+
+variable "node_max_size" {
+  description = "Número máximo de nós"
+  type        = number
+  default     = 3
+}
+
+variable "node_min_size" {
+  description = "Número mínimo de nós"
+  type        = number
+  default     = 1
 }

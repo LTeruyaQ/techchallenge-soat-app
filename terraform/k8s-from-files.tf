@@ -32,10 +32,7 @@ locals {
 # Namespace
 resource "kubectl_manifest" "k8s_namespace" {
   depends_on = [
-    aws_eks_cluster.eks,
-    aws_eks_node_group.nodes,
-    aws_eks_access_entry.lab_role,
-    aws_eks_access_policy_association.lab_role_admin
+    aws_eks_node_group.nodes
   ]
 
   yaml_body = file("${path.module}/../k8s/namespace.yaml")
@@ -87,10 +84,7 @@ resource "kubectl_manifest" "k8s_hpa" {
 # Observability Namespace
 resource "kubectl_manifest" "otel_namespace" {
   depends_on = [
-    aws_eks_cluster.eks,
-    aws_eks_node_group.nodes,
-    aws_eks_access_entry.lab_role,
-    aws_eks_access_policy_association.lab_role_admin
+    aws_eks_node_group.nodes
   ]
 
   yaml_body = file("${path.module}/../k8s/observability-namespace.yaml")
