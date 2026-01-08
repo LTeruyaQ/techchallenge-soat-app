@@ -23,8 +23,4 @@ resource "aws_eks_cluster" "eks" {
     Name    = "eks-${var.project_name}"
     Project = "MecanicaOS"
   }
-
-  depends_on = [
-    aws_internet_gateway.igw,
-  ]
 }

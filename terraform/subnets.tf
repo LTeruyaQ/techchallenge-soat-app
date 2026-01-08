@@ -5,7 +5,7 @@
 resource "aws_subnet" "public" {
   count                   = 3
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 4, count.index)
+  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 4, count.index + 10) # Offset to avoid conflict
   map_public_ip_on_launch = true
   availability_zone       = var.availability_zones[count.index]
 
@@ -22,7 +22,7 @@ resource "aws_subnet" "public" {
 resource "aws_subnet" "private" {
   count             = 3
   vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index + 3) # Use um range diferente para não sobrepor
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index + 20) # Offset to avoid conflict
   availability_zone = var.availability_zones[count.index]
 
   tags = {
