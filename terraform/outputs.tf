@@ -4,17 +4,17 @@
 
 output "vpc_id" {
   description = "ID da VPC"
-  value       = aws_vpc.main.id
+  value       = data.aws_vpc.existing.id
 }
 
 output "vpc_cidr" {
   description = "CIDR da VPC"
-  value       = aws_vpc.main.cidr_block
+  value       = data.aws_vpc.existing.cidr_block
 }
 
 output "subnet_ids" {
   description = "IDs das subnets"
-  value       = aws_subnet.public[*].id
+  value       = data.aws_subnets.private.ids
 }
 
 output "eks_cluster_name" {

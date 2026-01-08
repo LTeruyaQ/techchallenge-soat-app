@@ -18,7 +18,7 @@ resource "aws_secretsmanager_secret_version" "db_credentials" {
 resource "aws_security_group" "rds" {
   name        = "${local.prefix}-rds-sg"
   description = "Allow access to RDS from Lambda and EKS"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = data.aws_vpc.existing.id
 
   ingress {
     from_port       = 5432
@@ -44,7 +44,7 @@ resource "aws_security_group" "rds" {
 
 resource "aws_db_subnet_group" "rds" {
   name       = "${local.prefix}-rds-subnet-group"
-  subnet_ids = aws_subnet.private[*].id
+  subnet_ids = data.aws_subnets.private.ids
 }
 
 resource "aws_db_instance" "default" {

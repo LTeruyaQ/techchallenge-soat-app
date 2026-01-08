@@ -51,5 +51,5 @@ resource "aws_apigatewayv2_route" "eks_proxy" {
 resource "aws_apigatewayv2_vpc_link" "eks" {
   name               = "${local.prefix}-eks-vpc-link"
   security_group_ids = [aws_security_group.eks_nodes.id]
-  subnet_ids         = aws_subnet.private[*].id
+  subnet_ids         = data.aws_subnets.private.ids
 }
