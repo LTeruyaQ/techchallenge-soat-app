@@ -62,7 +62,7 @@ resource "aws_lambda_function" "auth_lambda" {
   }
 
   vpc_config {
-    subnet_ids         = data.aws_subnets.private.ids
+    subnet_ids         = aws_subnet.private[*].id
     security_group_ids = [aws_security_group.rds.id]
   }
 
