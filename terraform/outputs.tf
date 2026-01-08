@@ -40,10 +40,6 @@ output "rds_dbname" {
   value       = aws_db_instance.default.db_name
 }
 
-output "db_secret_arn" {
-  description = "ARN do segredo do banco de dados no Secrets Manager"
-  value       = aws_secretsmanager_secret.db_credentials.arn
-}
 
 output "api_gateway_endpoint" {
   description = "URL do API Gateway"
