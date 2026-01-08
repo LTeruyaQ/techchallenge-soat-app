@@ -4,11 +4,6 @@ data "archive_file" "lambda_zip" {
   output_path = "${path.module}/lambda.zip"
 }
 
-resource "random_string" "jwt_secret" {
-  length  = 32
-  special = false
-}
-
 data "aws_iam_role" "lab_role" {
   name = "LabRole"
 }
@@ -29,7 +24,7 @@ resource "aws_lambda_function" "auth_lambda" {
       DB_NAME        = aws_db_instance.default.db_name
       DB_USER        = "mecanicaosadmin"
       DB_PASSWORD    = random_password.db_password.result
-      JWT_SECRET_KEY = random_string.jwt_secret.result
+      JWT_SECRET_KEY = random_password.jwt_secret_key.result
     }
   }
 

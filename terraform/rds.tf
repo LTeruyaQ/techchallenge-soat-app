@@ -1,8 +1,3 @@
-resource "random_password" "db_password" {
-  length  = 16
-  special = true
-}
-
 resource "aws_db_subnet_group" "rds" {
   name       = "mecanicaos-rds-subnet-group"
   subnet_ids = aws_subnet.private[*].id

@@ -64,6 +64,10 @@ try {
 # ======================================================
 if ($Destroy) {
     Write-Title "MODO DESTROY"
+    Write-Step "Limpando estado anterior do Terraform..."
+    Remove-Item -Recurse -Force -Path ".terraform" -ErrorAction SilentlyContinue
+    Remove-Item -Force -Path "terraform.tfstate*", "terraform.tfstate.d" -ErrorAction SilentlyContinue
+    Write-Success "Estado limpo."
     terraform init; Check-Last-Exit-Code
     terraform destroy -auto-approve; Check-Last-Exit-Code
     Write-Success "Infraestrutura destruída."
@@ -72,6 +76,10 @@ if ($Destroy) {
 
 if ($Plan) {
     Write-Title "MODO PLAN"
+    Write-Step "Limpando estado anterior do Terraform..."
+    Remove-Item -Recurse -Force -Path ".terraform" -ErrorAction SilentlyContinue
+    Remove-Item -Force -Path "terraform.tfstate*", "terraform.tfstate.d" -ErrorAction SilentlyContinue
+    Write-Success "Estado limpo."
     terraform init; Check-Last-Exit-Code
     terraform plan; Check-Last-Exit-Code
     Write-Success "Plano gerado."
@@ -82,6 +90,10 @@ if ($Plan) {
 # ETAPA 3: DEPLOY DA INFRAESTRUTURA COMPLETA
 # ======================================================
 Write-Title "ETAPA 3: Deploy da Infraestrutura (VPC, EKS, RDS, Lambda, API GW)"
+Write-Step "Limpando estado anterior do Terraform..."
+Remove-Item -Recurse -Force -Path ".terraform" -ErrorAction SilentlyContinue
+Remove-Item -Force -Path "terraform.tfstate*", "terraform.tfstate.d" -ErrorAction SilentlyContinue
+Write-Success "Estado limpo."
 terraform init; Check-Last-Exit-Code
 terraform validate; Check-Last-Exit-Code
 Write-Step "Aplicando a configuração do Terraform... Isso pode levar vários minutos."

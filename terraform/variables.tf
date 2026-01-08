@@ -164,21 +164,9 @@ variable "db_username" {
   default     = "postgres"
 }
 
-variable "db_password" {
-  description = "Senha do banco de dados"
-  type        = string
-  sensitive   = true
-}
-
 # ============================================
 # Variáveis do JWT
 # ============================================
-
-variable "jwt_secret_key" {
-  description = "Chave secreta para geração de tokens JWT"
-  type        = string
-  sensitive   = true
-}
 
 variable "jwt_issuer" {
   description = "Emissor do token JWT"
