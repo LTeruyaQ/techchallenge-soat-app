@@ -14,7 +14,7 @@ Write-Host "Iniciando Sanity Check do Ambiente..." -ForegroundColor Cyan
 $allChecksPassed = $true
 
 # Lista de comandos a serem verificados
-$commandsToCheck = @("aws", "terraform", "kubectl", "psql")
+$commandsToCheck = @("aws", "terraform", "kubectl")
 
 foreach ($cmd in $commandsToCheck) {
     if (-not (Check-Command $cmd)) {

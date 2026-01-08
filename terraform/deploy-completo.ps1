@@ -96,31 +96,22 @@ terraform apply -auto-approve; Check-Last-Exit-Code
 Write-Success "Infraestrutura base provisionada com sucesso."
 
 # ======================================================
-# ETAPA 4: INICIALIZAÇÃO DO BANCO DE DADOS
+# ETAPA 4: CONFIGURAÇÃO PÓS-PROVISIONAMENTO
 # ======================================================
-Write-Title "ETAPA 4: Inicialização do Banco de Dados RDS"
-$RDSEndpoint = terraform output -raw rds_endpoint; Check-Last-Exit-Code
-$DBName = terraform output -raw rds_dbname; Check-Last-Exit-Code
-$DBUser = "postgres" # Usuário padrão do RDS
-$DBSecretArn = terraform output -raw rds_db_credentials_secret_arn; Check-Last-Exit-Code
-$DBPassword = aws secretsmanager get-secret-value --secret-id $DBSecretArn --query SecretString --output text | ConvertFrom-Json | Select-Object -ExpandProperty password
-
-Write-Step "Populando o esquema do banco de dados..."
-$env:PGPASSWORD = $DBPassword
-psql -h $RDSEndpoint -U $DBUser -d $DBName -f "rds-init.sql"
-Check-Last-Exit-Code
-Write-Success "Esquema do banco de dados inicializado."
-
-
-# ======================================================
-# ETAPA 5: CONFIGURAÇÃO PÓS-PROVISIONAMENTO
-# ======================================================
-Write-Title "ETAPA 5: Configuração Pós-Provisionamento"
+Write-Title "ETAPA 4: Configuração Pós-Provisionamento"
 $EKS_CLUSTER_NAME = terraform output -raw eks_cluster_name; Check-Last-Exit-Code
 aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME; Check-Last-Exit-Code
 Write-Success "kubectl configurado para o cluster '$EKS_CLUSTER_NAME'."
 
-# ... (código de inicialização do DB via Job permanece o mesmo)
+# ======================================================
+# ETAPA 5: INICIALIZAÇÃO DO BANCO DE DADOS (VIA K8S JOB)
+# ======================================================
+Write-Title "ETAPA 5: Inicialização do Banco de Dados via Kubernetes Job"
+Write-Step "Aguardando o job 'db-init-job' concluir... Isso pode levar um minuto."
+kubectl wait --for=condition=complete job/db-init-job --timeout=300s
+Check-Last-Exit-Code
+Write-Success "Job de inicialização do banco de dados concluído."
+
 
 # ======================================================
 # ETAPA 6: DEPLOY DA APLICAÇÃO E DESCOBERTA DO ALB
