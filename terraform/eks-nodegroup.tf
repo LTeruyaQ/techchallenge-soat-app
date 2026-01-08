@@ -9,7 +9,7 @@ resource "aws_eks_node_group" "nodes" {
   # Usando role do AWS Academy
   node_role_arn = local.eks_node_role_arn
 
-  subnet_ids     = aws_subnet.public[*].id
+  subnet_ids     = data.aws_subnets.public.ids
   disk_size      = 50
   instance_types = var.instance_types
 

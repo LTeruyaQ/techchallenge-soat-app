@@ -44,7 +44,7 @@ resource "aws_security_group" "rds" {
 
 resource "aws_db_subnet_group" "rds" {
   name       = "${local.prefix}-rds-subnet-group"
-  subnet_ids = aws_subnet.private[*].id
+  subnet_ids = data.aws_subnets.private.ids
 }
 
 resource "aws_db_instance" "default" {
