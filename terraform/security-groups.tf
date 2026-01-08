@@ -7,6 +7,13 @@ resource "aws_security_group" "eks_cluster" {
   description = "Security group for EKS control plane"
   vpc_id      = aws_vpc.main.id
 
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+
   tags = {
     Name = "${local.prefix}-eks-cluster-sg"
   }
@@ -23,6 +30,13 @@ resource "aws_security_group" "eks_nodes" {
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [aws_vpc.main.cidr_block]
   }
 
   tags = {
