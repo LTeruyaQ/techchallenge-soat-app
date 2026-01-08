@@ -25,9 +25,6 @@ resource "aws_eks_cluster" "eks" {
   }
 
   depends_on = [
-    aws_vpc.main,
-    aws_subnet.public,
     aws_internet_gateway.igw,
-    aws_route_table_association.public
   ]
 }
