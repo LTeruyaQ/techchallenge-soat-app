@@ -26,7 +26,6 @@ graph TD
         D[Amazon EKS (Cluster Kubernetes)]
         E[API .NET (Pods)]
         F[Amazon RDS (PostgreSQL)]
-        G[AWS Secrets Manager]
         H[Amazon ECR]
     end
 
@@ -38,8 +37,6 @@ graph TD
     B -- Proxy --> D
     D --> E
     E -- Acessa dados --> F
-    C -- Lê credenciais --> G
-    E -- Lê connection string --> G
 
     style F fill:#add,stroke:#333,stroke-width:2px
     style D fill:#e1f5ff,stroke:#01579b,stroke-width:2px
@@ -50,14 +47,13 @@ graph TD
 - **AWS Lambda:** Função Python que valida o CPF do cliente diretamente no RDS, verifica seu status e gera um JWT, desacoplando a autenticação da aplicação principal.
 - **Amazon EKS:** Cluster Kubernetes que orquestra os contêineres da API .NET, configurado com Horizontal Pod Autoscaler (HPA) para escalabilidade automática baseada em CPU.
 - **Amazon RDS for PostgreSQL:** Banco de dados gerenciado, operando em subnets privadas para segurança, com esquema inicializado automaticamente pelo script de deploy.
-- **AWS Secrets Manager:** Armazena de forma segura as credenciais do RDS e os segredos do JWT, acessados tanto pela Lambda quanto pela API no EKS.
 - **Amazon ECR:** Repositório de contêineres privado onde a imagem Docker da aplicação é armazenada após o build com Kaniko.
 
 ### Fluxo de Autenticação:
 1. O cliente envia seu CPF para o endpoint `/auth` no API Gateway.
 2. O API Gateway aciona a função Lambda de autenticação.
-3. A Lambda lê as credenciais do RDS no Secrets Manager, conecta-se ao banco e verifica se o cliente com o CPF fornecido existe e está ativo.
-4. Se for válido, a Lambda gera um JWT assinado (usando um segredo também do Secrets Manager) e o retorna ao cliente.
+3. A Lambda conecta-se ao banco de dados (cujas credenciais são injetadas pelo script de deploy) e verifica se o cliente com o CPF fornecido existe e está ativo.
+4. Se for válido, a Lambda gera um JWT assinado e o retorna ao cliente.
 5. O cliente utiliza o JWT no cabeçalho `Authorization` para acessar as rotas protegidas da API, que são roteadas pelo API Gateway para o serviço no EKS.
 
 ---
@@ -91,7 +87,7 @@ O script detectará automaticamente os recursos da VPC, criará todos os serviç
 ## 4. Checklist de Validação
 
 - [ ] `.\deploy-completo.ps1` roda sem erros e sem solicitar inputs humanos.
-- [ ] RDS criado e acessível pela Lambda (SGs e Secrets Manager configurados).
+- [ ] RDS criado e acessível pela Lambda (Security Groups configurados).
 - [ ] Endpoint de autenticação (`/auth`) com CPF funciona e retorna um JWT válido.
 - [ ] Rotas protegidas da API exigem o JWT; rotas públicas (como Swagger) continuam acessíveis.
 - [ ] Swagger da API está publicamente acessível através da URL do API Gateway.

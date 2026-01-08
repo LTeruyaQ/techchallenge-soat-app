@@ -1,74 +1,32 @@
 # ============================================
-# Subnets
-# Cria subnets públicas e privadas para a VPC
+# Subnets Públicas
 # ============================================
 
-# Data source para buscar a VPC, caso um ID seja passado pelo script
-data "aws_vpc" "existing_vpc" {
-  count = var.vpc_id != "" ? 1 : 0
-  id    = var.vpc_id
-}
-
-# Data source para buscar subnets privadas na VPC existente
-data "aws_subnets" "existing_private_subnets" {
-  count = var.vpc_id != "" ? 1 : 0
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.existing_vpc[0].id]
-  }
-  # Adicione tags se suas subnets existentes tiverem um padrão de nomenclatura
-  tags = {
-    "Tier" = "Private"
-  }
-}
-
-data "aws_subnets" "public_in_vpc" {
-  count = var.vpc_id != "" ? 1 : 0
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.existing_vpc[0].id]
-  }
-  tags = {
-    "Tier" = "Public"
-  }
-}
-
-
-# Unifica a referência ao ID da VPC e Subnets
-locals {
-  vpc_id = var.vpc_id == "" ? aws_vpc.main.id : data.aws_vpc.existing_vpc[0].id
-
-  public_subnet_ids  = var.vpc_id == "" ? aws_subnet.public[*].id : data.aws_subnets.public_in_vpc[0].ids
-  private_subnet_ids = var.vpc_id == "" ? aws_subnet.private[*].id : data.aws_subnets.existing_private_subnets[0].ids
-}
-
-# Cria as subnets somente se uma vpc_id existente NÃO foi passada
 resource "aws_subnet" "public" {
-  count = var.vpc_id == "" ? 2 : 0
-
-  vpc_id                  = local.vpc_id
-  cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
+  count                   = 3
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = cidrsubnet(aws_vpc.main.cidr_block, 4, count.index)
   map_public_ip_on_launch = true
   availability_zone       = var.availability_zones[count.index]
 
   tags = {
-    Name                                      = "${var.project_name}-public-subnet-${count.index + 1}"
-    "kubernetes.io/cluster/${local.prefix}-eks" = "shared"
-    "kubernetes.io/role/elb"                  = "1"
+    Name    = "${var.project_name}-subnet-${count.index + 1}"
+    Project = "MecanicaOS"
   }
 }
 
-resource "aws_subnet" "private" {
-  count = var.vpc_id == "" ? 2 : 0
+# ============================================
+# Subnets Privadas
+# ============================================
 
-  vpc_id            = local.vpc_id
-  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 2) # Offset
+resource "aws_subnet" "private" {
+  count             = 3
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index + 3) # Use um range diferente para não sobrepor
   availability_zone = var.availability_zones[count.index]
 
   tags = {
-    Name                                      = "${var.project_name}-private-subnet-${count.index + 1}"
-    "kubernetes.io/cluster/${local.prefix}-eks" = "shared"
-    "kubernetes.io/role/internal-elb"         = "1"
-    "Tier"                                    = "Private"
+    Name    = "${var.project_name}-private-subnet-${count.index + 1}"
+    Project = "MecanicaOS"
   }
 }

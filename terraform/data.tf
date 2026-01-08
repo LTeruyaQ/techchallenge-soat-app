@@ -2,13 +2,17 @@
 # Data Sources - AWS Academy
 # ============================================
 
+# Dados do cluster EKS (após criação)
+data "aws_eks_cluster" "cluster" {
+  name = aws_eks_cluster.eks.name
+}
+
+data "aws_eks_cluster_auth" "auth" {
+  name = aws_eks_cluster.eks.name
+}
 
 # Account ID atual
 data "aws_caller_identity" "current" {}
-
-data "aws_iam_role" "lab_role" {
-  name = "LabRole"
-}
 
 # As fontes de dados de VPC, Subnet e Security Group foram removidas
 # para evitar erros de permissão no AWS Academy.

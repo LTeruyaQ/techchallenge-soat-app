@@ -19,12 +19,12 @@ output "subnet_ids" {
 
 output "eks_cluster_name" {
   description = "Nome do cluster EKS"
-  value       = local.eks_cluster_name
+  value       = aws_eks_cluster.eks.name
 }
 
 output "eks_cluster_endpoint" {
   description = "Endpoint do cluster EKS"
-  value       = local.eks_cluster_endpoint
+  value       = aws_eks_cluster.eks.endpoint
 }
 
 # A saída ecr_repository_url foi removida pois o ECR
@@ -62,5 +62,5 @@ output "docker_image" {
 
 output "kubectl_config_command" {
   description = "Comando para configurar kubectl"
-  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${local.eks_cluster_name}"
+  value       = "aws eks update-kubeconfig --region ${var.aws_region} --name ${aws_eks_cluster.eks.name}"
 }

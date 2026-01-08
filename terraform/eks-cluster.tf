@@ -1,48 +1,33 @@
 # ============================================
 # EKS Cluster
-# Gerencia a criação ou a importação de um cluster EKS
 # ============================================
 
-# Tenta criar o cluster somente se a flag skip_create_eks for falsa
 resource "aws_eks_cluster" "eks" {
-  count = var.skip_create_eks ? 0 : 1
+  name = "eks-${var.project_name}"
 
-  name     = "eks-mecanicaos"
-  role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.eks_cluster_role}"
+  # Modo de autenticação API (necessário para AWS Academy)
+  access_config {
+    authentication_mode = "API"
+  }
 
-  # A versão só é especificada durante a criação. `null` permite que o Terraform ignore o atributo para clusters existentes.
-  version  = var.skip_create_eks ? null : "1.28"
+  # Usando role do AWS Academy
+  role_arn = local.eks_cluster_role_arn
+  version  = "1.31"
 
   vpc_config {
-    subnet_ids         = local.public_subnet_ids
+    subnet_ids         = aws_subnet.public[*].id
     security_group_ids = [aws_security_group.eks_cluster.id]
   }
 
   tags = {
-    Name    = "eks-mecanicaos"
+    Name    = "eks-${var.project_name}"
     Project = "MecanicaOS"
   }
-}
 
-data "aws_eks_cluster_auth" "eks" {
-  count = var.skip_create_eks ? 0 : 1
-  name  = aws_eks_cluster.eks[0].name
-}
-
-# Data source para ler o cluster que já existe (se skip_create_eks for verdadeiro)
-data "aws_eks_cluster" "existing" {
-  count = var.skip_create_eks ? 1 : 0
-  name  = "eks-mecanicaos"
-}
-
-data "aws_eks_cluster_auth" "existing_auth" {
-  count = var.skip_create_eks ? 1 : 0
-  name  = "eks-mecanicaos"
-}
-
-# Local para unificar a referência ao cluster, seja ele criado ou existente
-locals {
-  eks_cluster_endpoint       = var.skip_create_eks ? data.aws_eks_cluster.existing[0].endpoint : aws_eks_cluster.eks[0].endpoint
-  eks_cluster_ca_certificate = var.skip_create_eks ? data.aws_eks_cluster.existing[0].certificate_authority[0].data : aws_eks_cluster.eks[0].certificate_authority[0].data
-  eks_cluster_name           = "eks-mecanicaos" # Nome é fixo
+  depends_on = [
+    aws_vpc.main,
+    aws_subnet.public,
+    aws_internet_gateway.igw,
+    aws_route_table_association.public
+  ]
 }
