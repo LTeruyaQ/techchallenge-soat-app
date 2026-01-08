@@ -34,14 +34,14 @@ provider "aws" {
 # Observação: os data sources aws_eks_cluster e aws_eks_cluster_auth
 # devem existir apenas em data.tf (não duplicar aqui).
 provider "kubernetes" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.auth.token
+  host                   = local.eks_cluster_endpoint
+  cluster_ca_certificate = base64decode(local.eks_cluster_ca_certificate)
+  token                  = var.skip_create_eks ? data.aws_eks_cluster_auth.existing_auth[0].token : data.aws_eks_cluster_auth.eks[0].token
 }
 
 provider "kubectl" {
-  host                   = data.aws_eks_cluster.cluster.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
-  token                  = data.aws_eks_cluster_auth.auth.token
+  host                   = local.eks_cluster_endpoint
+  cluster_ca_certificate = base64decode(local.eks_cluster_ca_certificate)
+  token                  = var.skip_create_eks ? data.aws_eks_cluster_auth.existing_auth[0].token : data.aws_eks_cluster_auth.eks[0].token
   load_config_file       = false
 }

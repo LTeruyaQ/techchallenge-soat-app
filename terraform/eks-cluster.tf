@@ -9,10 +9,12 @@ resource "aws_eks_cluster" "eks" {
 
   name     = "eks-mecanicaos"
   role_arn = "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/${var.eks_cluster_role}"
-  version  = "1.28" # Usando uma versão LTS estável
+
+  # A versão só é especificada durante a criação. `null` permite que o Terraform ignore o atributo para clusters existentes.
+  version  = var.skip_create_eks ? null : "1.28"
 
   vpc_config {
-    subnet_ids         = aws_subnet.public[*].id
+    subnet_ids         = local.public_subnet_ids
     security_group_ids = [aws_security_group.eks_cluster.id]
   }
 
@@ -20,6 +22,11 @@ resource "aws_eks_cluster" "eks" {
     Name    = "eks-mecanicaos"
     Project = "MecanicaOS"
   }
+}
+
+data "aws_eks_cluster_auth" "eks" {
+  count = var.skip_create_eks ? 0 : 1
+  name  = aws_eks_cluster.eks[0].name
 }
 
 # Data source para ler o cluster que já existe (se skip_create_eks for verdadeiro)
@@ -35,7 +42,7 @@ data "aws_eks_cluster_auth" "existing_auth" {
 
 # Local para unificar a referência ao cluster, seja ele criado ou existente
 locals {
-  eks_cluster_endpoint = var.skip_create_eks ? data.aws_eks_cluster.existing[0].endpoint : aws_eks_cluster.eks[0].endpoint
+  eks_cluster_endpoint       = var.skip_create_eks ? data.aws_eks_cluster.existing[0].endpoint : aws_eks_cluster.eks[0].endpoint
   eks_cluster_ca_certificate = var.skip_create_eks ? data.aws_eks_cluster.existing[0].certificate_authority[0].data : aws_eks_cluster.eks[0].certificate_authority[0].data
-  eks_cluster_name = "eks-mecanicaos" # Nome é fixo
+  eks_cluster_name           = "eks-mecanicaos" # Nome é fixo
 }

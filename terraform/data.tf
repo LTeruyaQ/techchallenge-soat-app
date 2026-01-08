@@ -2,14 +2,6 @@
 # Data Sources - AWS Academy
 # ============================================
 
-# Dados do cluster EKS (usando o local para consistência)
-data "aws_eks_cluster" "cluster" {
-  name = local.eks_cluster_name
-}
-
-data "aws_eks_cluster_auth" "auth" {
-  name = local.eks_cluster_name
-}
 
 # Account ID atual
 data "aws_caller_identity" "current" {}

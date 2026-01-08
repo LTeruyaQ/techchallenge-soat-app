@@ -22,10 +22,24 @@ data "aws_subnets" "existing_private_subnets" {
   }
 }
 
+data "aws_subnets" "public_in_vpc" {
+  count = var.vpc_id != "" ? 1 : 0
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.existing_vpc[0].id]
+  }
+  tags = {
+    "Tier" = "Public"
+  }
+}
 
-# Unifica a referência ao ID da VPC
+
+# Unifica a referência ao ID da VPC e Subnets
 locals {
   vpc_id = var.vpc_id == "" ? aws_vpc.main.id : data.aws_vpc.existing_vpc[0].id
+
+  public_subnet_ids  = var.vpc_id == "" ? aws_subnet.public[*].id : data.aws_subnets.public_in_vpc[0].ids
+  private_subnet_ids = var.vpc_id == "" ? aws_subnet.private[*].id : data.aws_subnets.existing_private_subnets[0].ids
 }
 
 # Cria as subnets somente se uma vpc_id existente NÃO foi passada

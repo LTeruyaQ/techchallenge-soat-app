@@ -79,6 +79,10 @@ if ($Plan) {
     exit 0
 }
 
+# Inicializa o Terraform uma única vez, antes de qualquer operação
+Write-Step "Inicializando o Terraform..."
+terraform init; Check-Last-Exit-Code
+
 # --- Bloco de autodetecção/import para evitar recriar recursos existentes ---
 Write-Title "AUTODETECÇÃO: Verificando recursos AWS existentes (EKS, IAM Role)"
 
@@ -99,9 +103,6 @@ $eksDescribe = Exec-AwsSafe "aws eks describe-cluster --name $eksNameCandidate -
 if ($eksDescribe) {
     Write-Warning "Cluster EKS '$eksNameCandidate' encontrado. O Terraform tentará reutilizá-lo."
     $env:TF_VAR_skip_create_eks = "true"
-
-    # Inicializa o Terraform antes de verificar o state
-    terraform init > $null
 
     $hasState = Exec-AwsSafe "terraform state list | Select-String 'aws_eks_cluster.eks' -Quiet"
     if (-not $hasState) {
@@ -148,7 +149,6 @@ Write-Title "ETAPA 3: Deploy da Infraestrutura com Terraform"
 $env:TF_VAR_eks_cluster_role = "LabEksClusterRole"
 $env:TF_VAR_eks_node_role    = "LabEksNodeRole"
 
-terraform init; Check-Last-Exit-Code
 terraform validate; Check-Last-Exit-Code
 
 Write-Step "Aplicando a configuração da infraestrutura... Isso pode levar vários minutos."
