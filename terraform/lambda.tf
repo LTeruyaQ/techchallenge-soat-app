@@ -10,18 +10,6 @@ resource "random_string" "jwt_secret" {
   special = false
 }
 
-resource "aws_secretsmanager_secret" "jwt_secret" {
-  name = "mecanicaos-jwt-secret"
-}
-
-resource "aws_secretsmanager_secret_version" "jwt_secret" {
-  secret_id     = aws_secretsmanager_secret.jwt_secret.id
-  secret_string = jsonencode({
-    secret = random_string.jwt_secret.result
-  })
-}
-
-
 resource "aws_lambda_function" "auth_lambda" {
   function_name = "${local.prefix}-auth-lambda"
   role          = data.aws_iam_role.lab_role.arn
