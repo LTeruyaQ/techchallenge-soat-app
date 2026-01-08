@@ -1,6 +1,5 @@
 # ============================================
 # Script de Deploy COMPLETO - MecanicaOS (AWS Academy)
-# Versão Simplificada - Sem Build, Usando Imagem Pública
 # ============================================
 
 param(
@@ -84,6 +83,12 @@ if ($Plan) {
 Write-Title "ETAPA 3: Deploy FASE 1 - Infraestrutura Base (EKS, RDS, Lambda)"
 $env:TF_VAR_eks_cluster_role = "LabEksClusterRole"
 $env:TF_VAR_eks_node_role    = "LabEksNodeRole"
+
+# Descobre a role do Lambda dinamicamente
+$LAMBDA_ROLE_NAME = "LabRole" # Role padrão do AWS Academy
+$env:TF_VAR_lambda_execution_role_name = $LAMBDA_ROLE_NAME
+Write-Step "Usando a role '$LAMBDA_ROLE_NAME' para a Lambda."
+
 terraform init; Check-Last-Exit-Code
 terraform validate; Check-Last-Exit-Code
 Write-Step "Aplicando a infraestrutura base... Isso pode levar vários minutos."
@@ -91,9 +96,26 @@ terraform apply -auto-approve; Check-Last-Exit-Code
 Write-Success "Infraestrutura base provisionada com sucesso."
 
 # ======================================================
-# ETAPA 4: CONFIGURAÇÃO PÓS-PROVISIONAMENTO
+# ETAPA 4: INICIALIZAÇÃO DO BANCO DE DADOS
 # ======================================================
-Write-Title "ETAPA 4: Configuração Pós-Provisionamento"
+Write-Title "ETAPA 4: Inicialização do Banco de Dados RDS"
+$RDSEndpoint = terraform output -raw rds_endpoint; Check-Last-Exit-Code
+$DBName = terraform output -raw rds_dbname; Check-Last-Exit-Code
+$DBUser = "postgres" # Usuário padrão do RDS
+$DBSecretArn = terraform output -raw rds_db_credentials_secret_arn; Check-Last-Exit-Code
+$DBPassword = aws secretsmanager get-secret-value --secret-id $DBSecretArn --query SecretString --output text | ConvertFrom-Json | Select-Object -ExpandProperty password
+
+Write-Step "Populando o esquema do banco de dados..."
+$env:PGPASSWORD = $DBPassword
+psql -h $RDSEndpoint -U $DBUser -d $DBName -f "rds-init.sql"
+Check-Last-Exit-Code
+Write-Success "Esquema do banco de dados inicializado."
+
+
+# ======================================================
+# ETAPA 5: CONFIGURAÇÃO PÓS-PROVISIONAMENTO
+# ======================================================
+Write-Title "ETAPA 5: Configuração Pós-Provisionamento"
 $EKS_CLUSTER_NAME = terraform output -raw eks_cluster_name; Check-Last-Exit-Code
 aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME; Check-Last-Exit-Code
 Write-Success "kubectl configurado para o cluster '$EKS_CLUSTER_NAME'."
@@ -101,23 +123,33 @@ Write-Success "kubectl configurado para o cluster '$EKS_CLUSTER_NAME'."
 # ... (código de inicialização do DB via Job permanece o mesmo)
 
 # ======================================================
-# ETAPA 5: DEPLOY DA APLICAÇÃO E DESCOBERTA DO ALB
+# ETAPA 6: DEPLOY DA APLICAÇÃO E DESCOBERTA DO ALB
 # ======================================================
-Write-Title "ETAPA 5: Deploy da Aplicação no EKS"
+Write-Title "ETAPA 6: Deploy da Aplicação no EKS"
 kubectl apply -f "..\k8s\"; Check-Last-Exit-Code
 Write-Step "Aguardando o Application Load Balancer (ALB) ser provisionado..."
 # ... (código de espera do ALB permanece o mesmo)
 
 # ======================================================
-# ETAPA 6: DEPLOY FASE 2 - INTEGRAÇÃO FINAL
+# ETAPA 7: DEPLOY FASE 2 - INTEGRAÇÃO FINAL
 # ======================================================
-Write-Title "ETAPA 6: Deploy FASE 2 - Integração do API Gateway"
+Write-Title "ETAPA 7: Deploy FASE 2 - Integração do API Gateway"
 terraform apply -auto-approve -var="alb_hostname=$ALB_HOSTNAME"; Check-Last-Exit-Code
 Write-Success "Integração do API Gateway concluída."
 
 # ======================================================
-# ETAPA 7: RESUMO FINAL DO DEPLOY
+# ETAPA 8: RESUMO FINAL DO DEPLOY
 # ======================================================
-Write-Title "ETAPA 7: Resumo do Deploy"
-# ... (código de resumo permanece o mesmo)
+Write-Title "ETAPA 8: Resumo do Deploy"
+$ApiGatewayUrl = terraform output -raw api_gateway_invoke_url
+$SwaggerUrl = "$ApiGatewayUrl/swagger"
+
+Write-Host "✔️ EKS criado"
+Write-Host "✔️ RDS criado"
+Write-Host "✔️ Lambda criada"
+Write-Host "✔️ API Gateway criado"
+Write-Host ""
+Write-Host "URL pública da API: $ApiGatewayUrl"
+Write-Host "URL do Swagger: $SwaggerUrl"
+
 Write-Title "Deploy finalizado com sucesso!"

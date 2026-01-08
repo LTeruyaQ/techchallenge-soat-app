@@ -4,19 +4,8 @@ data "archive_file" "lambda_zip" {
   output_path = "${path.module}/lambda.zip"
 }
 
-resource "aws_iam_role" "lambda_exec" {
-  name = "${local.prefix}-lambda-exec-role"
-
-  assume_role_policy = jsonencode({
-    Version   = "2012-10-17"
-    Statement = [{
-      Action    = "sts:AssumeRole"
-      Effect    = "Allow"
-      Principal = {
-        Service = "lambda.amazonaws.com"
-      }
-    }]
-  })
+data "aws_iam_role" "lambda_exec" {
+  name = var.lambda_execution_role_name
 }
 
 resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {

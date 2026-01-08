@@ -15,7 +15,7 @@ resource "aws_eks_cluster" "eks" {
   version  = "1.31"
 
   vpc_config {
-    subnet_ids         = aws_subnet.public[*].id
+    subnet_ids         = data.aws_subnets.private.ids
     security_group_ids = [aws_security_group.eks_cluster.id]
   }
 
@@ -23,11 +23,4 @@ resource "aws_eks_cluster" "eks" {
     Name    = "eks-${var.project_name}"
     Project = "MecanicaOS"
   }
-
-  depends_on = [
-    aws_vpc.main,
-    aws_subnet.public,
-    aws_internet_gateway.igw,
-    aws_route_table_association.public
-  ]
 }

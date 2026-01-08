@@ -76,6 +76,11 @@ variable "instance_types" {
   default     = ["t3.medium"]
 }
 
+variable "lambda_execution_role_name" {
+  description = "Nome do IAM Role para a execução da Lambda"
+  type        = string
+}
+
 variable "node_desired_size" {
   description = "Número desejado de nodes"
   type        = number

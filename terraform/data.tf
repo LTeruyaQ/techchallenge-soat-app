@@ -14,9 +14,21 @@ data "aws_eks_cluster_auth" "auth" {
 # Account ID atual
 data "aws_caller_identity" "current" {}
 
-# As fontes de dados de VPC, Subnet e Security Group foram removidas
-# para evitar erros de permissão no AWS Academy.
-# A configuração agora cria e referencia seus próprios recursos de rede.
+# Descobre a VPC padrão da AWS Academy
+data "aws_vpc" "existing" {
+  default = true
+}
+
+# Descobre as subnets privadas existentes na VPC
+data "aws_subnets" "private" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.existing.id]
+  }
+  tags = {
+    "aws:cloudformation:logical-id" = "PrivateSubnet1"
+  }
+}
 
 # Bloco removido para evitar dependência circular.
 # O hostname do ALB agora é passado na segunda fase do 'terraform apply'.
