@@ -20,6 +20,27 @@ resource "aws_apigatewayv2_api" "http_api" {
 }
 
 # ============================================
+# Descoberta do Load Balancer do EKS
+# ============================================
+
+# Adiciona um tempo de espera para garantir que o Ingress Controller
+# tenha tempo de provisionar o ALB e registrar as tags.
+resource "time_sleep" "wait_for_alb" {
+  depends_on = [aws_eks_cluster.eks] # Depende do cluster EKS estar pronto
+  create_duration = "2m" # Espera 2 minutos
+}
+
+# Data source para descobrir o Application Load Balancer (ALB) criado pelo Ingress do EKS
+data "aws_lb" "eks_alb" {
+  depends_on = [time_sleep.wait_for_alb]
+
+  tags = {
+    # Tags aplicadas pelo AWS Load Balancer Controller
+    "elbv2.k8s.aws/cluster" = var.project_name
+  }
+}
+
+# ============================================
 # VPC Link para conectar ao EKS
 # ============================================
 
@@ -54,7 +75,8 @@ resource "aws_apigatewayv2_integration" "eks_proxy" {
   integration_method     = "ANY"
   connection_type        = "VPC_LINK"
   connection_id          = aws_apigatewayv2_vpc_link.eks.id
-  integration_uri        = module.eks.cluster_endpoint # O endpoint do cluster EKS
+  # Usa o DNS name do ALB descoberto
+  integration_uri        = "http://${data.aws_lb.eks_alb.dns_name}"
   payload_format_version = "1.0"
 }
 

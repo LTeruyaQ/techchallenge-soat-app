@@ -4,17 +4,22 @@
 
 output "vpc_id" {
   description = "ID da VPC"
-  value       = aws_vpc.main.id
+  value       = local.vpc_id
 }
 
 output "vpc_cidr" {
   description = "CIDR da VPC"
-  value       = aws_vpc.main.cidr_block
+  value       = local.vpc_cidr
 }
 
-output "subnet_ids" {
-  description = "IDs das subnets"
-  value       = aws_subnet.public[*].id
+output "public_subnet_ids" {
+  description = "IDs das subnets públicas"
+  value       = local.public_subnet_ids
+}
+
+output "private_subnet_ids" {
+  description = "IDs das subnets privadas"
+  value       = local.private_subnet_ids
 }
 
 output "eks_cluster_name" {
@@ -38,6 +43,17 @@ output "rds_endpoint" {
 output "rds_dbname" {
   description = "Nome do banco de dados RDS"
   value       = aws_db_instance.default.db_name
+}
+
+output "rds_username" {
+  description = "Nome de usuário do banco de dados RDS"
+  value       = var.db_username
+}
+
+output "rds_password" {
+  description = "Senha do banco de dados RDS"
+  value       = local.db_password
+  sensitive   = true
 }
 
 

@@ -41,8 +41,7 @@ resource "aws_iam_role_policy_attachment" "lambda_vpc_access" {
 
 data "archive_file" "lambda_zip" {
   type        = "zip"
-  source_dir  = "${path.module}/lambda/package" # Diretório com as dependências
-  source_file = "${path.module}/lambda/main.py"  # Arquivo principal do código
+  source_dir  = "${path.module}/lambda/package"
   output_path = "${path.module}/lambda.zip"
 }
 

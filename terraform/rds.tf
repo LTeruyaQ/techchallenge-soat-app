@@ -18,7 +18,7 @@ resource "aws_db_subnet_group" "rds" {
 resource "aws_security_group" "rds" {
   name        = "${var.project_name}-rds-sg"
   description = "Permite acesso ao RDS a partir do EKS e da Lambda"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = local.vpc_id
 
   # Libera todo o tráfego de saída (necessário para updates, etc.)
   egress {

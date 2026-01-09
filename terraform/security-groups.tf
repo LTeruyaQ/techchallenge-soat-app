@@ -5,14 +5,14 @@
 resource "aws_security_group" "eks_cluster" {
   name        = "${var.project_name}-eks-cluster-sg"
   description = "Security group for EKS control plane"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = local.vpc_id
   tags        = { Name = "${var.project_name}-eks-cluster-sg" }
 }
 
 resource "aws_security_group" "eks_nodes" {
   name        = "${var.project_name}-eks-nodes-sg"
   description = "Security group for EKS nodes"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = local.vpc_id
 
   # Libera todo o tráfego de saída
   egress {
@@ -32,7 +32,7 @@ resource "aws_security_group" "eks_nodes" {
 resource "aws_security_group" "lambda" {
   name        = "${var.project_name}-lambda-sg"
   description = "Security group for the Authentication Lambda"
-  vpc_id      = aws_vpc.main.id
+  vpc_id      = local.vpc_id
 
   # Libera todo o tráfego de saída para a Lambda acessar o RDS e outros serviços AWS
   egress {

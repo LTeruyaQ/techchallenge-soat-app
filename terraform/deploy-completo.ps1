@@ -109,16 +109,28 @@ if ($Plan) {
 }
 
 # ======================================================
-# ETAPA 3: INSTALAÇÃO DE DEPENDÊNCIAS DA LAMBDA
+# ETAPA 3: PREPARAÇÃO DO PACOTE DA LAMBDA
 # ======================================================
-Write-Title "ETAPA 3: Instalação de Dependências da Lambda"
-Write-Step "Instalando pacotes Python para a função Lambda..."
+Write-Title "ETAPA 3: Preparação do Pacote da Lambda"
+$LambdaPackageDir = ".\lambda\package"
+
+Write-Step "Limpando diretório de pacote antigo..."
+if (Test-Path $LambdaPackageDir) {
+    Remove-Item -Recurse -Force $LambdaPackageDir
+}
+New-Item -ItemType Directory -Path $LambdaPackageDir | Out-Null
+
+Write-Step "Instalando dependências Python..."
 if (Test-Path ".\lambda\requirements.txt") {
-    pip install --target ".\lambda\package" -r ".\lambda\requirements.txt"; Check-Last-Exit-Code
+    pip install --target $LambdaPackageDir -r ".\lambda\requirements.txt"; Check-Last-Exit-Code
     Write-Success "Dependências da Lambda instaladas."
 } else {
-    Write-Warning "Arquivo requirements.txt não encontrado. Pulando instalação de dependências."
+    Write-Warning "Arquivo requirements.txt não encontrado."
 }
+
+Write-Step "Copiando o código da função Lambda..."
+Copy-Item -Path ".\lambda\main.py" -Destination $LambdaPackageDir; Check-Last-Exit-Code
+Write-Success "Código da Lambda copiado para o diretório do pacote."
 
 # ======================================================
 # ETAPA 4: DEPLOY DA INFRAESTRUTURA COMPLETA
@@ -159,7 +171,7 @@ Write-Title "ETAPA 6: Inicialização do Banco de Dados"
 Write-Step "Obtendo detalhes de conexão do RDS..."
 $RDSEndpoint = terraform output -raw rds_endpoint; Check-Last-Exit-Code
 $RDSUsername = terraform output -raw rds_username; Check-Last-Exit-Code
-$RDSPassword = terraform output -raw rds_password; Check-Last-Exit-Code
+$RDSPassword = terraform output -raw --sensitive rds_password; Check-Last-Exit-Code
 $DBName      = terraform output -raw rds_dbname; Check-Last-Exit-Code
 
 Write-Step "Executando script SQL (rds-init.sql)..."
@@ -172,7 +184,7 @@ try {
     Write-ErrorMsg "Falha ao executar o script SQL. Verifique se 'psql' está instalado e no PATH."
     throw
 } finally {
-    Remove-Item Env:\PGPASSWORD
+    if (Test-Path Env:\PGPASSWORD) { Remove-Item Env:\PGPASSWORD }
 }
 
 # ======================================================
@@ -180,13 +192,15 @@ try {
 # ======================================================
 Write-Title "ETAPA 7: Resumo do Deploy"
 $ApiGatewayUrl = terraform output -raw api_gateway_endpoint; Check-Last-Exit-Code
-$SwaggerUrl = "$ApiGatewayUrl/swagger"
+$SwaggerUrl = "$ApiGatewayUrl/swagger" # Assumindo que o Swagger está em /swagger
 
-Write-Success "✔️ EKS criado: $EKS_CLUSTER_NAME"
-Write-Success "✔️ RDS criado: $RDSEndpoint"
-Write-Success "✔️ Lambda criada"
-Write-Success "✔️ API Gateway criado"
-Write-Info "URL pública da API: $ApiGatewayUrl"
-Write-Info "URL do Swagger: $SwaggerUrl"
+Write-Success "✔️ EKS Cluster Criado: $EKS_CLUSTER_NAME"
+Write-Success "✔️ RDS Endpoint Criado: $RDSEndpoint"
+Write-Success "✔️ Lambda de Autenticação Criada"
+Write-Success "✔️ API Gateway Criado"
+Write-Info  "-------------------------------------------"
+Write-Info  "URL Pública da API: $ApiGatewayUrl"
+Write-Info  "URL do Swagger UI:  $SwaggerUrl"
+Write-Info  "-------------------------------------------"
 
 Write-Title "Deploy finalizado com sucesso!"
