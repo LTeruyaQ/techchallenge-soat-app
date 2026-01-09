@@ -5,8 +5,8 @@
 locals {
   # Prefixo para todos os recursos para garantir nomes únicos
   prefix = var.project_name
-  # String de conexão do banco de dados (Supabase)
-  db_connection_string = "Host=${var.db_host};Port=${var.db_port};Database=${var.db_name};Username=${var.db_username};Password=${var.db_password};SSL Mode=Require;Trust Server Certificate=true"
+  # String de conexão do banco de dados (RDS)
+  db_connection_string = "Host=${aws_db_instance.default.address};Port=${aws_db_instance.default.port};Database=${aws_db_instance.default.db_name};Username=${aws_db_instance.default.username};Password=${random_password.db_password.result};SSL Mode=Require;Trust Server Certificate=true"
 
   # Account ID
   account_id = data.aws_caller_identity.current.account_id

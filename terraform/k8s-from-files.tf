@@ -14,7 +14,7 @@ locals {
     docker_image                = var.docker_image
     environment                 = var.environment
     db_connection_string        = local.db_connection_string
-    jwt_secret_key              = var.jwt_secret_key
+    jwt_secret_key              = random_password.jwt_secret_key.result
     jwt_issuer                  = var.jwt_issuer
     jwt_audience                = var.jwt_audience
     jwt_expiry_minutes          = var.jwt_expiry_minutes
