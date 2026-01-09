@@ -71,25 +71,30 @@ if ($VpcId -ne "None") {
     Write-Success "VPC encontrada: $VpcId"
     $env:TF_VAR_existing_vpc_id = $VpcId
 
-    Write-Step "Procurando por subnets privadas existentes..."
-    $PrivateSubnetIds = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" "Name=tag:Name,Values=$ProjectName-private-subnet-*" --query "Subnets[*].SubnetId" --output json | ConvertFrom-Json
-    if ($PrivateSubnetIds.Count -gt 0) {
-        Write-Success "Subnets privadas encontradas: $($PrivateSubnetIds -join ', ')"
-        $env:TF_VAR_existing_private_subnet_ids = ($PrivateSubnetIds | ConvertTo-Json -Compress)
-    }
+    Write-Step "Procurando e classificando subnets existentes..."
+    $Subnets = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" "Name=tag:Project,Values=$ProjectName" --query "Subnets[*].{ID:SubnetId, Tags:Tags}" --output json | ConvertFrom-Json
 
-    Write-Step "Procurando por subnets públicas existentes (por exclusão)..."
-    $AllProjectSubnets = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" "Name=tag:Project,Values=$ProjectName" --query "Subnets[*].SubnetId" --output json | ConvertFrom-Json
     $PublicSubnetIds = @()
-    if ($AllProjectSubnets.Count -gt 0) {
-        # Filtra a lista de todas as subnets, mantendo apenas aquelas que não estão na lista de privadas
-        $PublicSubnetIds = $AllProjectSubnets | Where-Object { $_ -notin $PrivateSubnetIds }
+    $PrivateSubnetIds = @()
+
+    foreach ($Subnet in $Subnets) {
+        $NameTag = $Subnet.Tags | Where-Object { $_.Key -eq "Name" } | Select-Object -ExpandProperty Value
+        if ($NameTag -like "*-private-subnet-*") {
+            $PrivateSubnetIds += $Subnet.ID
+        } else {
+            $PublicSubnetIds += $Subnet.ID
+        }
     }
 
     if ($PublicSubnetIds.Count -gt 0) {
         Write-Success "Subnets públicas encontradas: $($PublicSubnetIds -join ', ')"
         $env:TF_VAR_existing_public_subnet_ids = ($PublicSubnetIds | ConvertTo-Json -Compress)
     }
+    if ($PrivateSubnetIds.Count -gt 0) {
+        Write-Success "Subnets privadas encontradas: $($PrivateSubnetIds -join ', ')"
+        $env:TF_VAR_existing_private_subnet_ids = ($PrivateSubnetIds | ConvertTo-Json -Compress)
+    }
+
 } else {
     Write-Info "Nenhuma VPC existente encontrada. Uma nova será criada."
 }
