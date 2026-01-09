@@ -61,7 +61,7 @@ resource "aws_db_instance" "default" {
   identifier             = "${var.project_name}-db"
   allocated_storage      = 20
   engine                 = "postgres"
-  engine_version         = "13.7"
+  engine_version         = "13"
   instance_class         = "db.t3.micro" # Menor instância disponível
   db_name                = var.db_name
   username               = var.db_username
