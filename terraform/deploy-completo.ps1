@@ -79,11 +79,12 @@ if ($VpcId -ne "None") {
     }
 
     Write-Step "Procurando por subnets públicas existentes (por exclusão)..."
-    $AllProjectSubnets = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" "Name=tag:Project,Values=$ProjectName" --query "Subnets[*].SubnetId" --output json | ConvertFrom-Json
+    # Busca TODAS as subnets na VPC, sem filtrar por tag de projeto, para encontrar subnets órfãs.
+    $AllVpcSubnets = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" --query "Subnets[*].SubnetId" --output json | ConvertFrom-Json
     $PublicSubnetIds = @()
-    if ($AllProjectSubnets.Count -gt 0) {
-        # Compara a lista de todas as subnets com as privadas para encontrar as públicas
-        $PublicSubnetIds = Compare-Object $AllProjectSubnets $PrivateSubnetIds -PassThru
+    if ($AllVpcSubnets -and $AllVpcSubnets.Count -gt 0) {
+        # Compara a lista de TODAS as subnets com as privadas para encontrar as públicas
+        $PublicSubnetIds = Compare-Object $AllVpcSubnets $PrivateSubnetIds -PassThru
     }
 
     if ($PublicSubnetIds.Count -gt 0) {
