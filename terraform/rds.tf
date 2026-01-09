@@ -58,6 +58,9 @@ resource "aws_security_group_rule" "rds_from_lambda" {
 # ============================================
 
 resource "aws_db_instance" "default" {
+  depends_on = [
+    aws_subnet.private
+  ]
   identifier             = "${var.project_name}-db"
   allocated_storage      = 20
   engine                 = "postgres"

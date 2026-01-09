@@ -48,49 +48,49 @@ resource "aws_apigatewayv2_integration" "autenticacao" {
   api_id             = aws_apigatewayv2_api.http_api.id
   integration_type   = "HTTP_PROXY"
   integration_method = "ANY"
-  integration_uri    = "http://${data.aws_lb.eks_alb.dns_name}/Autenticacao"
+  integration_uri    = "https://${data.aws_lb.eks_alb.dns_name}/Autenticacao"
 }
 
 resource "aws_apigatewayv2_integration" "cliente" {
   api_id             = aws_apigatewayv2_api.http_api.id
   integration_type   = "HTTP_PROXY"
   integration_method = "ANY"
-  integration_uri    = "http://${data.aws_lb.eks_alb.dns_name}/Cliente"
+  integration_uri    = "https://${data.aws_lb.eks_alb.dns_name}/Cliente"
 }
 
 resource "aws_apigatewayv2_integration" "estoque" {
   api_id             = aws_apigatewayv2_api.http_api.id
   integration_type   = "HTTP_PROXY"
   integration_method = "ANY"
-  integration_uri    = "http://${data.aws_lb.eks_alb.dns_name}/Estoque"
+  integration_uri    = "https://${data.aws_lb.eks_alb.dns_name}/Estoque"
 }
 
 resource "aws_apigatewayv2_integration" "ordem_servico" {
   api_id             = aws_apigatewayv2_api.http_api.id
   integration_type   = "HTTP_PROXY"
   integration_method = "ANY"
-  integration_uri    = "http://${data.aws_lb.eks_alb.dns_name}/OrdemServico"
+  integration_uri    = "https://${data.aws_lb.eks_alb.dns_name}/OrdemServico"
 }
 
 resource "aws_apigatewayv2_integration" "servico" {
   api_id             = aws_apigatewayv2_api.http_api.id
   integration_type   = "HTTP_PROXY"
   integration_method = "ANY"
-  integration_uri    = "http://${data.aws_lb.eks_alb.dns_name}/Servico"
+  integration_uri    = "https://${data.aws_lb.eks_alb.dns_name}/Servico"
 }
 
 resource "aws_apigatewayv2_integration" "usuario" {
   api_id             = aws_apigatewayv2_api.http_api.id
   integration_type   = "HTTP_PROXY"
   integration_method = "ANY"
-  integration_uri    = "http://${data.aws_lb.eks_alb.dns_name}/Usuario"
+  integration_uri    = "https://${data.aws_lb.eks_alb.dns_name}/Usuario"
 }
 
 resource "aws_apigatewayv2_integration" "veiculo" {
   api_id             = aws_apigatewayv2_api.http_api.id
   integration_type   = "HTTP_PROXY"
   integration_method = "ANY"
-  integration_uri    = "http://${data.aws_lb.eks_alb.dns_name}/Veiculo"
+  integration_uri    = "https://${data.aws_lb.eks_alb.dns_name}/Veiculo"
 }
 
 # ============================================
