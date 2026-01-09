@@ -1,6 +1,6 @@
 resource "aws_db_subnet_group" "rds" {
   name       = "mecanicaos-rds-subnet-group"
-  subnet_ids = aws_subnet.private[*].id
+  subnet_ids = local.private_subnet_ids
 }
 
 resource "aws_db_instance" "default" {
