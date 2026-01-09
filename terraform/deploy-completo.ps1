@@ -77,12 +77,18 @@ if ($VpcId -ne "None") {
     $PublicSubnetIds = @()
     $PrivateSubnetIds = @()
 
-    foreach ($Subnet in $Subnets) {
-        $NameTag = $Subnet.Tags | Where-Object { $_.Key -eq "Name" } | Select-Object -ExpandProperty Value
-        if ($NameTag -like "*-private-subnet-*") {
-            $PrivateSubnetIds += $Subnet.ID
-        } else {
-            $PublicSubnetIds += $Subnet.ID
+    if ($null -ne $Subnets) {
+        foreach ($Subnet in $Subnets) {
+            $NameTag = $null
+            if ($null -ne $Subnet.Tags) {
+                $NameTag = $Subnet.Tags | Where-Object { $_.Key -eq "Name" } | Select-Object -ExpandProperty Value -FirstOrDefault
+            }
+
+            if ($null -ne $NameTag -and $NameTag -like "*-private-subnet-*") {
+                $PrivateSubnetIds += $Subnet.ID
+            } else {
+                $PublicSubnetIds += $Subnet.ID
+            }
         }
     }
 
