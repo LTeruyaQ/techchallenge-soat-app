@@ -82,8 +82,8 @@ if ($VpcId -ne "None") {
     $AllProjectSubnets = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" "Name=tag:Project,Values=$ProjectName" --query "Subnets[*].SubnetId" --output json | ConvertFrom-Json
     $PublicSubnetIds = @()
     if ($AllProjectSubnets.Count -gt 0) {
-        # Compara a lista de todas as subnets com as privadas para encontrar as públicas
-        $PublicSubnetIds = Compare-Object $AllProjectSubnets $PrivateSubnetIds -PassThru
+        # Filtra a lista de todas as subnets, mantendo apenas aquelas que não estão na lista de privadas
+        $PublicSubnetIds = $AllProjectSubnets | Where-Object { $_ -notin $PrivateSubnetIds }
     }
 
     if ($PublicSubnetIds.Count -gt 0) {
