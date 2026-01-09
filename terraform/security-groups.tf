@@ -1,57 +1,71 @@
+# ============================================
+# Security Groups - EKS
+# ============================================
+
 resource "aws_security_group" "eks_cluster" {
-  name        = "mecanicaos-eks-cluster-sg"
+  name        = "${var.project_name}-eks-cluster-sg"
   description = "Security group for EKS control plane"
   vpc_id      = aws_vpc.main.id
-  tags        = { Name = "mecanicaos-eks-cluster-sg" }
+  tags        = { Name = "${var.project_name}-eks-cluster-sg" }
 }
 
 resource "aws_security_group" "eks_nodes" {
-  name        = "mecanicaos-eks-nodes-sg"
+  name        = "${var.project_name}-eks-nodes-sg"
   description = "Security group for EKS nodes"
   vpc_id      = aws_vpc.main.id
-  tags        = { Name = "mecanicaos-eks-nodes-sg" }
+
+  # Libera todo o tráfego de saída
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags        = { Name = "${var.project_name}-eks-nodes-sg" }
 }
 
-resource "aws_security_group" "rds" {
-  name        = "mecanicaos-rds-sg"
-  description = "Security group for RDS"
+# ============================================
+# Security Group - Lambda
+# ============================================
+
+resource "aws_security_group" "lambda" {
+  name        = "${var.project_name}-lambda-sg"
+  description = "Security group for the Authentication Lambda"
   vpc_id      = aws_vpc.main.id
-  tags        = { Name = "mecanicaos-rds-sg" }
+
+  # Libera todo o tráfego de saída para a Lambda acessar o RDS e outros serviços AWS
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.project_name}-lambda-sg" }
 }
 
-# Regras de comunicação
-resource "aws_security_group_rule" "nodes_egress_internet" {
-  type              = "egress"
-  from_port         = 0
-  to_port           = 0
-  protocol          = "-1"
-  cidr_blocks       = ["0.0.0.0/0"]
-  security_group_id = aws_security_group.eks_nodes.id
-}
 
-resource "aws_security_group_rule" "cluster_to_nodes_https" {
+# ============================================
+# Regras de Comunicação EKS
+# ============================================
+
+# Permite que o control plane do EKS se comunique com os nodes na porta 443
+resource "aws_security_group_rule" "cluster_egress_to_nodes_https" {
   type                     = "egress"
   from_port                = 443
   to_port                  = 443
   protocol                 = "tcp"
-  source_security_group_id = aws_security_group.eks_nodes.id
   security_group_id        = aws_security_group.eks_cluster.id
+  source_security_group_id = aws_security_group.eks_nodes.id
 }
 
-resource "aws_security_group_rule" "nodes_from_cluster_https" {
+# Permite que os nodes recebam comunicação do control plane na porta 443
+resource "aws_security_group_rule" "nodes_ingress_from_cluster_https" {
   type                     = "ingress"
   from_port                = 443
   to_port                  = 443
   protocol                 = "tcp"
-  source_security_group_id = aws_security_group.eks_cluster.id
   security_group_id        = aws_security_group.eks_nodes.id
-}
-
-resource "aws_security_group_rule" "rds_from_nodes" {
-  type                     = "ingress"
-  from_port                = 5432
-  to_port                  = 5432
-  protocol                 = "tcp"
-  source_security_group_id = aws_security_group.eks_nodes.id
-  security_group_id        = aws_security_group.rds.id
+  source_security_group_id = aws_security_group.eks_cluster.id
 }

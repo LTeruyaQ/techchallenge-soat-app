@@ -60,7 +60,37 @@ try {
 }
 
 # ======================================================
-# ETAPA 2: MODOS DE EXECUÇÃO (DESTROY / PLAN)
+# ETAPA 2: DETECÇÃO DE RECURSOS EXISTENTES
+# ======================================================
+Write-Title "ETAPA 2: Detecção de Recursos Existentes"
+$ProjectName = "mecanicaos" # Usado para filtrar tags
+
+Write-Step "Procurando por VPC existente com a tag 'Project=MecanicaOS'..."
+$VpcId = aws ec2 describe-vpcs --filters "Name=tag:Project,Values=$ProjectName" --query "Vpcs[0].VpcId" --output text
+if ($VpcId -ne "None") {
+    Write-Success "VPC encontrada: $VpcId"
+    $env:TF_VAR_existing_vpc_id = $VpcId
+
+    Write-Step "Procurando por subnets públicas existentes..."
+    $PublicSubnetIds = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" "Name=tag:Name,Values=$ProjectName-subnet-*" --query "Subnets[*].SubnetId" --output json | ConvertFrom-Json
+    if ($PublicSubnetIds.Count -gt 0) {
+        Write-Success "Subnets públicas encontradas: $($PublicSubnetIds -join ', ')"
+        $env:TF_VAR_existing_public_subnet_ids = ($PublicSubnetIds | ConvertTo-Json -Compress)
+    }
+
+    Write-Step "Procurando por subnets privadas existentes..."
+    $PrivateSubnetIds = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" "Name=tag:Name,Values=$ProjectName-private-subnet-*" --query "Subnets[*].SubnetId" --output json | ConvertFrom-Json
+    if ($PrivateSubnetIds.Count -gt 0) {
+        Write-Success "Subnets privadas encontradas: $($PrivateSubnetIds -join ', ')"
+        $env:TF_VAR_existing_private_subnet_ids = ($PrivateSubnetIds | ConvertTo-Json -Compress)
+    }
+} else {
+    Write-Info "Nenhuma VPC existente encontrada. Uma nova será criada."
+}
+
+
+# ======================================================
+# ETAPA 2.5: MODOS DE EXECUÇÃO (DESTROY / PLAN)
 # ======================================================
 if ($Destroy) {
     Write-Title "MODO DESTROY"
@@ -79,9 +109,26 @@ if ($Plan) {
 }
 
 # ======================================================
-# ETAPA 3: DEPLOY DA INFRAESTRUTURA COMPLETA
+# ETAPA 3: INSTALAÇÃO DE DEPENDÊNCIAS DA LAMBDA
 # ======================================================
-Write-Title "ETAPA 3: Deploy da Infraestrutura (VPC, EKS, RDS, Lambda, API GW)"
+Write-Title "ETAPA 3: Instalação de Dependências da Lambda"
+Write-Step "Instalando pacotes Python para a função Lambda..."
+if (Test-Path ".\lambda\requirements.txt") {
+    pip install --target ".\lambda\package" -r ".\lambda\requirements.txt"; Check-Last-Exit-Code
+    Write-Success "Dependências da Lambda instaladas."
+} else {
+    Write-Warning "Arquivo requirements.txt não encontrado. Pulando instalação de dependências."
+}
+
+# ======================================================
+# ETAPA 4: DEPLOY DA INFRAESTRUTURA COMPLETA
+# ======================================================
+Write-Title "ETAPA 4: Deploy da Infraestrutura (VPC, EKS, RDS, Lambda, API GW)"
+
+# Injeta variáveis vazias para suprimir prompts de observability
+$env:TF_VAR_datadog_api_key = ""
+$env:TF_VAR_newrelic_license_key = ""
+
 terraform init; Check-Last-Exit-Code
 terraform validate; Check-Last-Exit-Code
 Write-Step "Aplicando a configuração do Terraform... Isso pode levar vários minutos."

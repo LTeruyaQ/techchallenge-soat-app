@@ -45,9 +45,10 @@ graph TD
 ### Componentes Principais:
 - **API Gateway (HTTP API):** Ponto de entrada para todas as requisições. Roteia chamadas de autenticação para a Lambda e outras requisições para a API no EKS.
 - **AWS Lambda:** Função Python que valida o CPF do cliente diretamente no RDS, verifica seu status e gera um JWT, desacoplando a autenticação da aplicação principal.
-- **Amazon EKS:** Cluster Kubernetes que orquestra os contêineres da API .NET, configurado com Horizontal Pod Autoscaler (HPA) para escalabilidade automática baseada em CPU.
+- **Amazon EKS:** Cluster Kubernetes que orquestra os contêineres da API .NET, configurado com **Horizontal Pod Autoscaler (HPA)** para escalabilidade automática baseada em CPU.
 - **Amazon RDS for PostgreSQL:** Banco de dados gerenciado, operando em subnets privadas para segurança, com esquema inicializado automaticamente pelo script de deploy.
 - **Amazon ECR:** Repositório de contêineres privado onde a imagem Docker da aplicação é armazenada após o build com Kaniko.
+- **Gerenciamento de Segredos:** Devido a restrições do ambiente AWS Academy, segredos como a senha do banco de dados e a chave JWT **não são armazenados no Secrets Manager**. Eles são gerados dinamicamente pelo Terraform a cada deploy e injetados diretamente nos serviços (Lambda e EKS) como variáveis de ambiente.
 
 ### Fluxo de Autenticação:
 1. O cliente envia seu CPF para o endpoint `/auth` no API Gateway.

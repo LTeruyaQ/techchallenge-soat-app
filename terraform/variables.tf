@@ -138,13 +138,8 @@ variable "docker_image_tag" {
 }
 
 # ============================================
-# Variáveis do Banco de Dados (Supabase)
+# Variáveis do Banco de Dados (RDS)
 # ============================================
-
-variable "db_host" {
-  description = "Host do banco de dados PostgreSQL (Supabase)"
-  type        = string
-}
 
 variable "db_port" {
   description = "Porta do banco de dados"
