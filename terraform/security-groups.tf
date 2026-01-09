@@ -40,13 +40,13 @@ resource "aws_security_group" "rds" {
 
 # Permite que o control plane envie tráfego para os nós (para o kubelet)
 resource "aws_security_group_rule" "cluster_egress_to_nodes" {
-  description                   = "Cluster to nodes for kubelet"
-  type                          = "egress"
-  from_port                     = 1025
-  to_port                       = 65535
-  protocol                      = "tcp"
-  security_group_id             = aws_security_group.eks_cluster.id
-  destination_security_group_id = aws_security_group.eks_nodes.id
+  description              = "Cluster to nodes for kubelet"
+  type                     = "egress"
+  from_port                = 1025
+  to_port                  = 65535
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.eks_cluster.id
+  source_security_group_id = aws_security_group.eks_nodes.id
 }
 
 # Permite que os nós recebam tráfego do control plane (para o kubelet)
@@ -62,13 +62,13 @@ resource "aws_security_group_rule" "nodes_ingress_from_cluster" {
 
 # Permite que os nós enviem tráfego para o control plane (API server)
 resource "aws_security_group_rule" "nodes_egress_to_cluster" {
-  description                   = "Nodes to cluster API"
-  type                          = "egress"
-  from_port                     = 443
-  to_port                       = 443
-  protocol                      = "tcp"
-  security_group_id             = aws_security_group.eks_nodes.id
-  destination_security_group_id = aws_security_group.eks_cluster.id
+  description              = "Nodes to cluster API"
+  type                     = "egress"
+  from_port                = 443
+  to_port                  = 443
+  protocol                 = "tcp"
+  security_group_id        = aws_security_group.eks_nodes.id
+  source_security_group_id = aws_security_group.eks_cluster.id
 }
 
 # Permite que o control plane receba tráfego dos nós (API server)
