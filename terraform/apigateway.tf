@@ -120,6 +120,7 @@ locals {
     "POST /OrdemServico"                          = { integration = aws_apigatewayv2_integration.ordem_servico, protected = true }
     "PUT /OrdemServico/{id}"                      = { integration = aws_apigatewayv2_integration.ordem_servico, protected = true }
     "POST /OrdemServico/{ordemServicoId}/insumos"  = { integration = aws_apigatewayv2_integration.ordem_servico, protected = true }
+    "GET /OrdemServico/test-error"                = { integration = aws_apigatewayv2_integration.ordem_servico, protected = false }
     "PATCH /OrdemServico/{id}/aceitar-orcamento"  = { integration = aws_apigatewayv2_integration.ordem_servico, protected = true }
     "PATCH /OrdemServico/{id}/recusar-orcamento"  = { integration = aws_apigatewayv2_integration.ordem_servico, protected = true }
     "GET /OrdemServico/ativas"                    = { integration = aws_apigatewayv2_integration.ordem_servico, protected = true }

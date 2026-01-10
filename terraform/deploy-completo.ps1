@@ -67,19 +67,19 @@ $ProjectName = "mecanicaos" # Usado para filtrar tags
 
 Write-Step "Procurando por VPC existente com a tag 'Project=MecanicaOS'..."
 $VpcId = aws ec2 describe-vpcs --filters "Name=tag:Project,Values=$ProjectName" --query "Vpcs[0].VpcId" --output text
-if ($VpcId -ne "None") {
+if ($VpcId -ne "None" -and $VpcId) {
     Write-Success "VPC encontrada: $VpcId"
     $env:TF_VAR_existing_vpc_id = $VpcId
 
     Write-Step "Procurando e classificando todas as subnets na VPC..."
-    # A consulta agora retorna o objeto JSON completo para uma análise mais robusta
     $AllSubnetsJson = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" --output json
     $AllSubnets = $AllSubnetsJson | ConvertFrom-Json
 
+    # Garante que $PublicSubnetIds e $PrivateSubnetIds sejam sempre arrays
     $PublicSubnetIds = @()
     $PrivateSubnetIds = @()
 
-    if ($AllSubnets -and $AllSubnets.Subnets) {
+    if ($null -ne $AllSubnets -and $null -ne $AllSubnets.Subnets) {
         Write-Info "Total de subnets encontradas na VPC: $($AllSubnets.Subnets.Count)"
         foreach ($subnet in $AllSubnets.Subnets) {
             $subnetId = $subnet.SubnetId
@@ -88,6 +88,7 @@ if ($VpcId -ne "None") {
 
             Write-Info "Analisando Subnet: $subnetId (CIDR: $cidr, MapPublicIpOnLaunch: $isPublic)"
 
+            # A classificação primária é pelo atributo MapPublicIpOnLaunch.
             if ($isPublic) {
                 $PublicSubnetIds += $subnetId
             } else {
@@ -96,21 +97,22 @@ if ($VpcId -ne "None") {
         }
     }
 
-    if ($PublicSubnetIds.Count -gt 0) {
-        Write-Success "Subnets públicas detectadas: $($PublicSubnetIds -join ', ')"
-        $env:TF_VAR_existing_public_subnet_ids = ($PublicSubnetIds | ConvertTo-Json -Compress)
-    } else {
-        Write-Info "Nenhuma subnet pública existente foi detectada."
-    }
+    # Passa as listas (mesmo que vazias) para o Terraform de forma explícita para garantir consistência
+    $env:TF_VAR_existing_public_subnet_ids = ($PublicSubnetIds | ConvertTo-Json -Compress)
+    $env:TF_VAR_existing_private_subnet_ids = ($PrivateSubnetIds | ConvertTo-Json -Compress)
 
-    if ($PrivateSubnetIds.Count -gt 0) {
-        Write-Success "Subnets privadas detectadas: $($PrivateSubnetIds -join ', ')"
-        $env:TF_VAR_existing_private_subnet_ids = ($PrivateSubnetIds | ConvertTo-Json -Compress)
-    } else {
-        Write-Info "Nenhuma subnet privada existente foi detectada."
-    }
+    Write-Success "Subnets públicas detectadas: $($PublicSubnetIds.Count)"
+    Write-Info "TF_VAR_existing_public_subnet_ids = $($env:TF_VAR_existing_public_subnet_ids)"
+
+    Write-Success "Subnets privadas detectadas: $($PrivateSubnetIds.Count)"
+    Write-Info "TF_VAR_existing_private_subnet_ids = $($env:TF_VAR_existing_private_subnet_ids)"
+
 } else {
     Write-Info "Nenhuma VPC existente encontrada. Uma nova será criada."
+    # Garante que as variáveis de subnet estejam explicitamente vazias se nenhuma VPC for encontrada
+    $env:TF_VAR_existing_vpc_id = ""
+    $env:TF_VAR_existing_public_subnet_ids = "[]"
+    $env:TF_VAR_existing_private_subnet_ids = "[]"
 }
 
 
