@@ -38,14 +38,6 @@ namespace Core.UseCases.OrdensServico.AceitarOrcamento
                     ordemServico.DataEnvioOrcamento.Value.AddDays(7) < DateTime.UtcNow)
                     throw new DadosInvalidosException("Orçamento expirado");
 
-                ordemServico.Status = StatusOrdemServico.EmExecucao;
-                ordemServico.DataAtualizacao = DateTime.UtcNow;
-
-                await _ordemServicoGateway.EditarAsync(ordemServico);
-
-                if (!await Commit())
-                    throw new PersistirDadosException("Erro ao aceitar orçamento");
-
                 LogFim(metodo, ordemServico);
 
                 return true;

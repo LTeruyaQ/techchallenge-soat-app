@@ -1,0 +1,100 @@
+# ============================================
+# OpenTelemetry Collector DaemonSet
+# ============================================
+# DaemonSet para coletar logs de todos os nós do cluster
+# Coleta traces/metrics via OTLP e logs via filelog receiver
+# Exporta para Datadog e New Relic
+# ============================================
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: otel-collector
+  namespace: observability
+  labels:
+    app: otel-collector
+spec:
+  selector:
+    matchLabels:
+      app: otel-collector
+  template:
+    metadata:
+      labels:
+        app: otel-collector
+    spec:
+      containers:
+        - name: otel-collector
+          image: otel/opentelemetry-collector-contrib:0.114.0
+          args:
+            - --config=/etc/otel-collector-config.yaml
+          ports:
+            - containerPort: 4317
+              name: otlp-grpc
+              protocol: TCP
+            - containerPort: 4318
+              name: otlp-http
+              protocol: TCP
+            - containerPort: 13133
+              name: health
+              protocol: TCP
+          env:
+            - name: DD_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: otel-collector-secret
+                  key: DD_API_KEY
+            - name: NR_LICENSE_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: otel-collector-secret
+                  key: NR_LICENSE_KEY
+            # Node name para enriquecer logs
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          volumeMounts:
+            # Config do collector
+            - name: otel-collector-config
+              mountPath: /etc/otel-collector-config.yaml
+              subPath: otel-collector-config.yaml
+              readOnly: true
+            # Logs dos pods (essencial para filelog receiver)
+            - name: varlogpods
+              mountPath: /var/log/pods
+              readOnly: true
+            # Logs de containers Docker/containerd (backup)
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          livenessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: health
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        # ConfigMap com configuração do collector
+        - name: otel-collector-config
+          configMap:
+            name: otel-collector-config
+        # Host path para logs dos pods
+        - name: varlogpods
+          hostPath:
+            path: /var/log/pods
+        # Host path para logs de containers (Docker/containerd)
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers

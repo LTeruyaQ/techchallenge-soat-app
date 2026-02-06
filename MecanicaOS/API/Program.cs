@@ -5,6 +5,7 @@ using API.Notificacoes.OS;
 using Core.DTOs.Config;
 using Core.Interfaces.root;
 using Core.Interfaces.Servicos;
+using Datadog.Trace.Configuration;
 using Hangfire;
 using Hangfire.PostgreSql;
 using Infraestrutura.Dados;
@@ -16,11 +17,24 @@ using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Serilog;
+using Serilog.Formatting.Compact;
+using Serilog.Formatting.Json;
 using System.IO.Compression;
 using System.Text;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+
+#region Serilog
+Log.Logger = new LoggerConfiguration()
+    .Enrich.FromLogContext()
+    .WriteTo.Console(new JsonFormatter())
+    .WriteTo.Console(new RenderedCompactJsonFormatter())
+    .CreateLogger();
+
+builder.Host.UseSerilog();
+#endregion
 
 // Add services to the container.
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
@@ -59,7 +73,6 @@ builder.Services.AddSwaggerGen(c =>
         }
     });
 });
-builder.Services.AddOpenApi();
 
 builder.Configuration.AddEnvironmentVariables();
 
@@ -105,6 +118,12 @@ builder.Services.AddAuthorization(options =>
 });
 
 builder.Services.AddHttpContextAccessor();
+
+#region Datadog APM
+var settings = TracerSettings.FromDefaultSources();
+settings.AnalyticsEnabled = true;
+Datadog.Trace.Tracer.Configure(settings);
+#endregion
 
 #region Infraestrutura
 // Jobs Hangfire
@@ -154,6 +173,46 @@ builder.Services.AddResponseCompression(options =>
 });
 
 var app = builder.Build();
+
+#region Middleware p/ rastrear e Logar requisições HTTP
+app.Use(async (context, next) =>
+{
+    var span = Datadog.Trace.Tracer.Instance.ActiveScope?.Span;
+
+    try
+    {
+        await next.Invoke();
+
+        var statusCode = context.Response.StatusCode;
+        span?.SetTag("http.status_code", statusCode.ToString());
+
+        if (statusCode >= 500)
+        {
+            span.Error = true;
+            Log.Error("Erro de Servidor: {Method} {Path} retornou {Status}",
+                      context.Request.Method, context.Request.Path, statusCode);
+        }
+        else if (statusCode >= 400)
+        {
+            span?.SetTag("app.business_status", "warning");
+
+            Log.Warning("Aviso de Negócio: {Method} {Path} retornou {Status}",
+                        context.Request.Method, context.Request.Path, statusCode);
+        }
+        else
+        {
+            Log.Information("Sucesso: {Method} {Path} Status {Status}",
+                            context.Request.Method, context.Request.Path, statusCode);
+        }
+    }
+    catch (Exception ex)
+    {
+        span?.SetException(ex);
+        Log.Error(ex, "Exceção Crítica na URL {Path}", context.Request.Path);
+        throw;
+    }
+});
+#endregion
 
 app.UseResponseCompression();
 

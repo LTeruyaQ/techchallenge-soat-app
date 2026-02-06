@@ -1,0 +1,1666 @@
+{
+  "version": 4,
+  "terraform_version": "1.14.1",
+  "serial": 120,
+  "lineage": "d8cb3ada-861b-2de1-7960-072b92b38d3b",
+  "outputs": {
+    "docker_image": {
+      "value": "986773187161.dkr.ecr.us-east-1.amazonaws.com/mecanicaos-ecr:20251206-192659",
+      "type": "string"
+    },
+    "ecr_repository_url": {
+      "value": "986773187161.dkr.ecr.us-east-1.amazonaws.com/mecanicaos-ecr",
+      "type": "string"
+    },
+    "eks_cluster_endpoint": {
+      "value": "https://A11EA5823DB6AE468FBF0A1813DBDF8D.gr7.us-east-1.eks.amazonaws.com",
+      "type": "string"
+    },
+    "eks_cluster_name": {
+      "value": "eks-mecanicaos",
+      "type": "string"
+    },
+    "kubectl_config_command": {
+      "value": "aws eks update-kubeconfig --region us-east-1 --name eks-mecanicaos",
+      "type": "string"
+    },
+    "subnet_ids": {
+      "value": [
+        "subnet-02d1b9fffe452bb97",
+        "subnet-03b37d0cabccf3d46",
+        "subnet-0f8c57a16ebe4853f"
+      ],
+      "type": [
+        "tuple",
+        [
+          "string",
+          "string",
+          "string"
+        ]
+      ]
+    },
+    "vpc_cidr": {
+      "value": "10.0.0.0/16",
+      "type": "string"
+    },
+    "vpc_id": {
+      "value": "vpc-0c55d1db6febf7420",
+      "type": "string"
+    }
+  },
+  "resources": [
+    {
+      "mode": "data",
+      "type": "aws_caller_identity",
+      "name": "current",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "account_id": "986773187161",
+            "arn": "arn:aws:sts::986773187161:assumed-role/voclabs/user4182995=pmfrp@hotmail.com",
+            "id": "986773187161",
+            "user_id": "AROA6LQCD5JMVXFV5O6K6:user4182995=pmfrp@hotmail.com"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "aws_eks_cluster",
+      "name": "cluster",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "access_config": [
+              {
+                "authentication_mode": "API",
+                "bootstrap_cluster_creator_admin_permissions": true
+              }
+            ],
+            "arn": "arn:aws:eks:us-east-1:986773187161:cluster/eks-mecanicaos",
+            "certificate_authority": [
+              {
+                "data": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJWEhBdDdhdHJBQ2d3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TlRFeU1EWXlNVFUzTlRWYUZ3MHpOVEV5TURReU1qQXlOVFZhTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUURTamRqekM3MGsxYlpLSURwakpHa0RsOXFWZVBuNTh2ZU9wQndhaUx0QUpjYWpIT0VtZ0hwM0tyZ28KVURialFKRU5Wc2h0WmZ3SGNxVGsxMEJjKzYwZzlEdE5sdS9FQzRUTlQ2SXJYYitEWGJzMGxvVFNROVRiRkd2QQpvL3NpUDlJOS9NR296bnBVREdpL2FnTzhpcnRROEhpcXArSVUyeFNuc1lUYjJMY0M5SEw1ckVwS21FWkxtaWdsCnFSckJwSWdaRlBJekF3SGJMQWdRQUlJaVJBNVQrOXEvYmJmN2RQU24vMUhFREJHVXBpNlRnRklPRXNmRDUwbXEKejFvM3ZpZjV4eVgyYnlUdW8rU1IybHk1SXlub25xLy84SFJVV0k3eUc4eDd6U1ZMc2pMSUxGaUdLaXJSL0pUawptUDRpY3Z3VE5uZkZ3N0JTRlI4NlBSVDQzWnNWQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJRNHVBQTE1dWJzU2ZjbkplSWdXTHUxKyttUFpUQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQk93Z1MzUDFTTApCZDgzL1ViSHhKdXdyY01icHA2WHVYRDFiN0FrVTBoS202NEZ3Ni9pU3N3N3YyNmhpUzNTdE1jbnpaZ1BORVptClF1VXFhUlpQWk5uYkVzN0x6T25NY3VvYVIrYXlxWk9vY2Y0YjV3V3dha1ViNVI3dG50ZldnbXNDQlhNYXZlWVUKblJ2Z3ByTEVTU0V2TVBaUytMN0tZS3p5NjBMWTI0WmJRWDRrSkUwMysxbkhCUWhuclNKV2pEU3RTM2RLS3ErUApMYzYzWGFIalI5UHdIQXQ0RHhtUFpsdEk0ZVFSQlQ5ckRLUHlyenk3dDNvMktHZGU1NGJBazZCVHlmbUF6K1BoCmE4bmVNbGRqSmgrRFZtcHJWcmZCRVVQdHRmRWVtejhQaFF2Z2ZPcjRnTmZtQTcxM2RPZUxvODFBalBIUzJ2WWoKZGY5aDZWMEkrTis2Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+              }
+            ],
+            "cluster_id": null,
+            "compute_config": [
+              {
+                "enabled": false,
+                "node_pools": [],
+                "node_role_arn": ""
+              }
+            ],
+            "control_plane_scaling_config": [
+              {
+                "tier": "standard"
+              }
+            ],
+            "created_at": "2025-12-06T21:57:11Z",
+            "deletion_protection": false,
+            "enabled_cluster_log_types": [],
+            "endpoint": "https://A11EA5823DB6AE468FBF0A1813DBDF8D.gr7.us-east-1.eks.amazonaws.com",
+            "id": "eks-mecanicaos",
+            "identity": [
+              {
+                "oidc": [
+                  {
+                    "issuer": "https://oidc.eks.us-east-1.amazonaws.com/id/A11EA5823DB6AE468FBF0A1813DBDF8D"
+                  }
+                ]
+              }
+            ],
+            "kubernetes_network_config": [
+              {
+                "elastic_load_balancing": [
+                  {
+                    "enabled": false
+                  }
+                ],
+                "ip_family": "ipv4",
+                "service_ipv4_cidr": "172.20.0.0/16",
+                "service_ipv6_cidr": ""
+              }
+            ],
+            "name": "eks-mecanicaos",
+            "outpost_config": [],
+            "platform_version": "eks.46",
+            "region": "us-east-1",
+            "remote_network_config": [],
+            "role_arn": "arn:aws:iam::986773187161:role/c184635a4783074l13015582t1w986773-LabEksClusterRole-pUvbkhHBzJA1",
+            "status": "ACTIVE",
+            "storage_config": [
+              {
+                "block_storage": [
+                  {
+                    "enabled": false
+                  }
+                ]
+              }
+            ],
+            "tags": {
+              "Name": "eks-mecanicaos",
+              "Project": "MecanicaOS"
+            },
+            "upgrade_policy": [
+              {
+                "support_type": "EXTENDED"
+              }
+            ],
+            "version": "1.31",
+            "vpc_config": [
+              {
+                "cluster_security_group_id": "sg-00a08c93bf16cc8c1",
+                "endpoint_private_access": false,
+                "endpoint_public_access": true,
+                "public_access_cidrs": [
+                  "0.0.0.0/0"
+                ],
+                "security_group_ids": [
+                  "sg-079defc8fb5ab315a"
+                ],
+                "subnet_ids": [
+                  "subnet-02d1b9fffe452bb97",
+                  "subnet-03b37d0cabccf3d46",
+                  "subnet-0f8c57a16ebe4853f"
+                ],
+                "vpc_id": "vpc-0c55d1db6febf7420"
+              }
+            ],
+            "zonal_shift_config": []
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "aws_eks_cluster_auth",
+      "name": "auth",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "id": "eks-mecanicaos",
+            "name": "eks-mecanicaos",
+            "region": "us-east-1",
+            "token": "k8s-aws-v1.aHR0cHM6Ly9zdHMudXMtZWFzdC0xLmFtYXpvbmF3cy5jb20vP0FjdGlvbj1HZXRDYWxsZXJJZGVudGl0eSZWZXJzaW9uPTIwMTEtMDYtMTUmWC1BbXotQWxnb3JpdGhtPUFXUzQtSE1BQy1TSEEyNTYmWC1BbXotQ3JlZGVudGlhbD1BU0lBNkxRQ0Q1Sk03QzVLSUZTNSUyRjIwMjUxMjA2JTJGdXMtZWFzdC0xJTJGc3RzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTEyMDZUMjI0MTM1WiZYLUFtei1FeHBpcmVzPTAmWC1BbXotU2VjdXJpdHktVG9rZW49SVFvSmIzSnBaMmx1WDJWakVMVCUyRiUyRiUyRiUyRiUyRiUyRiUyRiUyRiUyRiUyRndFYUNYVnpMWGRsYzNRdE1pSkhNRVVDSVFETHQzcXNTOUduVDdjOGR4T2kyQklJcXkxWGtFN3NHcHN5N05laUM2enpIUUlnS1JiMEZvVWx6cXE2MUx5WiUyRmdadTBCQlIlMkIlMkYwU082Zm00NHZ4Q2V0OE9ob3Fxd0lJZlJBQUdndzVPRFkzTnpNeE9EY3hOakVpREFrRzlnSGxTQXBYSHZIb2VpcUlBdEd5Y2NZdXdHSVdpJTJGTElmQ1BkdSUyQkVvU2VWJTJCcVc3a2hpNm5hSjI0a3pFam5USXF4QWxON3JxRkklMkZKNEJ1ZThrck9wNVhIY1NyTmdpUzR2ZGpyZk9tQ1Q0Z1c5QU5WR3FBQmpaQktzSzVPazdyYmpBTmdZYTFMbnRFT2ZWdWxvJTJGaE41MGI3RUNyUkdhSVA1YmVUNmFTT1M4cWRuREYxU2FHS3JzTm9xNFd4Z2JSMTFhOGJlMHd5d3IzdVhvNE5WJTJCQkwxY0UyR3NGNkpLMWc3RzBERCUyRmpXdzJaUm1PTTdNWVFlQUo1VjVxT0FBdUozWlMxc0JMU1NrS0pvVW9MeVI3bG5JWjNxUzRQWUE5VTlhZUlaa2piNVh6Q1RwOWxXVkJvZHZxRDE4YjlhZURIY0VXV3Vtd1M0OXVhZFd1cXJnOGtjbzklMkJsM3U2SGtwSmhtUHVjNGFvR0dEUU1tMTdzYkVEQ3VsTkxKQmpxZEFlRiUyRkx4bW1ram1uJTJGNE1nNFVYT3NrbTVNQUZIck9maHQ1VWslMkYzaWliQmlwUVhPeUlHb0JWejA4VURvNTk3bEklMkZ6SGlHaVJmSjZzRmNzSW4wUTY5ckZZZjRQVHNlMTR3QzBiTnpZVG1VM294emVyQSUyQkUxWVNXUDMlMkZUTVAlMkJCVnpLNjFVSnZHSDAyS0s5Z0U5aWxIWDNDRUppbHhkVzhNJTJGVktNRnhRdlF2dFcwVXQ1a0YlMkI4UGN4SURaOWhMSEV3VDdQMnJseEU1SHVwUlNMSFFaOFElM0QmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JTNCeC1rOHMtYXdzLWlkJlgtQW16LVNpZ25hdHVyZT0yOGQ0NzA3NmNmOWM4ZDFmZDA5ZWJhZmFlYjE4ZDVkMWM3MTk1MTExMGU3N2ExMGRiYWQyZWUxODYwMWMwNDlm"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "token"
+              }
+            ]
+          ],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "aws_iam_role",
+      "name": "eks_cluster_role",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::986773187161:role/c184635a4783074l13015582t1w986773-LabEksClusterRole-pUvbkhHBzJA1",
+            "assume_role_policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"eks.amazonaws.com\"},\"Action\":[\"sts:AssumeRole\",\"sts:TagSession\"]}]}",
+            "create_date": "2025-12-06T19:55:23Z",
+            "description": "",
+            "id": "c184635a4783074l13015582t1w986773-LabEksClusterRole-pUvbkhHBzJA1",
+            "max_session_duration": 3600,
+            "name": "c184635a4783074l13015582t1w986773-LabEksClusterRole-pUvbkhHBzJA1",
+            "path": "/",
+            "permissions_boundary": "",
+            "role_last_used": [
+              {
+                "last_used_date": "2025-12-06T22:33:28Z",
+                "region": "us-east-1"
+              }
+            ],
+            "tags": {
+              "cloudlab": "c184635a4783074l13015582t1w986773187161"
+            },
+            "unique_id": "AROA6LQCD5JMTND3ZVNZZ"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "aws_iam_role",
+      "name": "eks_node_role",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::986773187161:role/c184635a4783074l13015582t1w986773187-LabEksNodeRole-jDe3aIJ8I9XR",
+            "assume_role_policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}",
+            "create_date": "2025-12-06T19:55:23Z",
+            "description": "",
+            "id": "c184635a4783074l13015582t1w986773187-LabEksNodeRole-jDe3aIJ8I9XR",
+            "max_session_duration": 3600,
+            "name": "c184635a4783074l13015582t1w986773187-LabEksNodeRole-jDe3aIJ8I9XR",
+            "path": "/",
+            "permissions_boundary": "",
+            "role_last_used": [
+              {
+                "last_used_date": "2025-12-06T22:35:05Z",
+                "region": "us-east-1"
+              }
+            ],
+            "tags": {
+              "cloudlab": "c184635a4783074l13015582t1w986773187161"
+            },
+            "unique_id": "AROA6LQCD5JMWVCRXGCH7"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "data",
+      "type": "aws_iam_role",
+      "name": "lab_role",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:iam::986773187161:role/LabRole",
+            "assume_role_policy": "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":[\"elasticfilesystem.amazonaws.com\",\"iotanalytics.amazonaws.com\",\"ecs-tasks.amazonaws.com\",\"sns.amazonaws.com\",\"elasticloadbalancing.amazonaws.com\",\"codecommit.amazonaws.com\",\"iot.amazonaws.com\",\"iotevents.amazonaws.com\",\"application-autoscaling.amazonaws.com\",\"rekognition.amazonaws.com\",\"cloudtrail.amazonaws.com\",\"ec2.amazonaws.com\",\"dynamodb.amazonaws.com\",\"glue.amazonaws.com\",\"lambda.amazonaws.com\",\"backup.amazonaws.com\",\"rds.amazonaws.com\",\"forecast.amazonaws.com\",\"pipes.amazonaws.com\",\"codewhisperer.amazonaws.com\",\"logs.amazonaws.com\",\"events.amazonaws.com\",\"credentials.iot.amazonaws.com\",\"servicecatalog.amazonaws.com\",\"states.amazonaws.com\",\"batch.amazonaws.com\",\"scheduler.amazonaws.com\",\"cloud9.amazonaws.com\",\"cloudformation.amazonaws.com\",\"ec2.application-autoscaling.amazonaws.com\",\"autoscaling.amazonaws.com\",\"elasticbeanstalk.amazonaws.com\",\"sagemaker.amazonaws.com\",\"resource-groups.amazonaws.com\",\"kms.amazonaws.com\",\"ssm.amazonaws.com\",\"eks-fargate-pods.amazonaws.com\",\"cognito-idp.amazonaws.com\",\"apigateway.amazonaws.com\",\"firehose.amazonaws.com\",\"deepracer.amazonaws.com\",\"elasticmapreduce.amazonaws.com\",\"athena.amazonaws.com\",\"kinesis.amazonaws.com\",\"kinesisanalytics.amazonaws.com\",\"eks.amazonaws.com\",\"codedeploy.amazonaws.com\",\"sqs.amazonaws.com\",\"s3.amazonaws.com\",\"ecs.amazonaws.com\",\"databrew.amazonaws.com\",\"secretsmanager.amazonaws.com\",\"redshift.amazonaws.com\"],\"AWS\":\"arn:aws:iam::986773187161:role/LabRole\"},\"Action\":\"sts:AssumeRole\"}]}",
+            "create_date": "2025-12-06T19:55:25Z",
+            "description": "",
+            "id": "LabRole",
+            "max_session_duration": 3600,
+            "name": "LabRole",
+            "path": "/",
+            "permissions_boundary": "",
+            "role_last_used": [
+              {
+                "last_used_date": "2025-12-06T22:06:38Z",
+                "region": "us-east-1"
+              }
+            ],
+            "tags": {
+              "cloudlab": "c184635a4783074l13015582t1w986773187161"
+            },
+            "unique_id": "AROA6LQCD5JMYA2G5XZP2"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_ecr_repository",
+      "name": "app",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ecr:us-east-1:986773187161:repository/mecanicaos-ecr",
+            "encryption_configuration": [
+              {
+                "encryption_type": "AES256",
+                "kms_key": ""
+              }
+            ],
+            "force_delete": null,
+            "id": "mecanicaos-ecr",
+            "image_scanning_configuration": [
+              {
+                "scan_on_push": true
+              }
+            ],
+            "image_tag_mutability": "MUTABLE",
+            "image_tag_mutability_exclusion_filter": [],
+            "name": "mecanicaos-ecr",
+            "region": "us-east-1",
+            "registry_id": "986773187161",
+            "repository_url": "986773187161.dkr.ecr.us-east-1.amazonaws.com/mecanicaos-ecr",
+            "tags": {
+              "Env": "production",
+              "Project": "mecanicaos"
+            },
+            "tags_all": {
+              "Env": "production",
+              "Project": "mecanicaos"
+            },
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "identity": {
+            "account_id": "986773187161",
+            "name": "mecanicaos-ecr",
+            "region": "us-east-1"
+          },
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiZGVsZXRlIjoxMjAwMDAwMDAwMDAwfX0="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_eks_access_entry",
+      "name": "lab_role",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "access_entry_arn": "arn:aws:eks:us-east-1:986773187161:access-entry/eks-mecanicaos/role/986773187161/LabRole/7ecd7ad9-1b99-98cb-9531-7601e89e8d67",
+            "cluster_name": "eks-mecanicaos",
+            "created_at": "2025-12-06T22:04:48Z",
+            "id": "eks-mecanicaos:arn:aws:iam::986773187161:role/LabRole",
+            "kubernetes_groups": [],
+            "modified_at": "2025-12-06T22:04:48Z",
+            "principal_arn": "arn:aws:iam::986773187161:role/LabRole",
+            "region": "us-east-1",
+            "tags": {},
+            "tags_all": {},
+            "timeouts": null,
+            "type": "STANDARD",
+            "user_name": "arn:aws:sts::986773187161:assumed-role/LabRole/{{SessionName}}"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6NjAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "aws_eks_cluster.eks",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_iam_role.eks_cluster_role",
+            "data.aws_iam_role.lab_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_eks_access_entry",
+      "name": "voclabs",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "access_entry_arn": "arn:aws:eks:us-east-1:986773187161:access-entry/eks-mecanicaos/role/986773187161/voclabs/72cd7ae0-8890-8733-4159-d464c3dc7d78",
+            "cluster_name": "eks-mecanicaos",
+            "created_at": "2025-12-06T22:21:02Z",
+            "id": "eks-mecanicaos:arn:aws:iam::986773187161:role/voclabs",
+            "kubernetes_groups": [],
+            "modified_at": "2025-12-06T22:21:02Z",
+            "principal_arn": "arn:aws:iam::986773187161:role/voclabs",
+            "region": "us-east-1",
+            "tags": {},
+            "tags_all": {},
+            "timeouts": null,
+            "type": "STANDARD",
+            "user_name": "arn:aws:sts::986773187161:assumed-role/voclabs/{{SessionName}}"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6NjAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIwIn0=",
+          "dependencies": [
+            "aws_eks_cluster.eks",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_caller_identity.current",
+            "data.aws_iam_role.eks_cluster_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_eks_access_policy_association",
+      "name": "lab_role_admin",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "access_scope": [
+              {
+                "namespaces": [],
+                "type": "cluster"
+              }
+            ],
+            "associated_at": "2025-12-06 22:04:49.829 +0000 UTC",
+            "cluster_name": "eks-mecanicaos",
+            "id": "eks-mecanicaos#arn:aws:iam::986773187161:role/LabRole#arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy",
+            "modified_at": "2025-12-06 22:04:49.829 +0000 UTC",
+            "policy_arn": "arn:aws:eks::aws:cluster-access-policy/AmazonEKSAdminPolicy",
+            "principal_arn": "arn:aws:iam::986773187161:role/LabRole",
+            "region": "us-east-1",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6NjAwMDAwMDAwMDAwfX0=",
+          "dependencies": [
+            "aws_eks_access_entry.lab_role",
+            "aws_eks_cluster.eks",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_iam_role.eks_cluster_role",
+            "data.aws_iam_role.lab_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_eks_access_policy_association",
+      "name": "voclabs_admin",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "access_scope": [
+              {
+                "namespaces": [],
+                "type": "cluster"
+              }
+            ],
+            "associated_at": "2025-12-06 22:21:30.85 +0000 UTC",
+            "cluster_name": "eks-mecanicaos",
+            "id": "eks-mecanicaos#arn:aws:iam::986773187161:role/voclabs#arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy",
+            "modified_at": "2025-12-06 22:21:30.85 +0000 UTC",
+            "policy_arn": "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy",
+            "principal_arn": "arn:aws:iam::986773187161:role/voclabs",
+            "region": "us-east-1",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6NjAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIwIn0=",
+          "dependencies": [
+            "aws_eks_access_entry.voclabs",
+            "aws_eks_cluster.eks",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_caller_identity.current",
+            "data.aws_iam_role.eks_cluster_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_eks_cluster",
+      "name": "eks",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "access_config": [
+              {
+                "authentication_mode": "API",
+                "bootstrap_cluster_creator_admin_permissions": false
+              }
+            ],
+            "arn": "arn:aws:eks:us-east-1:986773187161:cluster/eks-mecanicaos",
+            "bootstrap_self_managed_addons": true,
+            "certificate_authority": [
+              {
+                "data": "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURCVENDQWUyZ0F3SUJBZ0lJWEhBdDdhdHJBQ2d3RFFZSktvWklodmNOQVFFTEJRQXdGVEVUTUJFR0ExVUUKQXhNS2EzVmlaWEp1WlhSbGN6QWVGdzB5TlRFeU1EWXlNVFUzTlRWYUZ3MHpOVEV5TURReU1qQXlOVFZhTUJVeApFekFSQmdOVkJBTVRDbXQxWW1WeWJtVjBaWE13Z2dFaU1BMEdDU3FHU0liM0RRRUJBUVVBQTRJQkR3QXdnZ0VLCkFvSUJBUURTamRqekM3MGsxYlpLSURwakpHa0RsOXFWZVBuNTh2ZU9wQndhaUx0QUpjYWpIT0VtZ0hwM0tyZ28KVURialFKRU5Wc2h0WmZ3SGNxVGsxMEJjKzYwZzlEdE5sdS9FQzRUTlQ2SXJYYitEWGJzMGxvVFNROVRiRkd2QQpvL3NpUDlJOS9NR296bnBVREdpL2FnTzhpcnRROEhpcXArSVUyeFNuc1lUYjJMY0M5SEw1ckVwS21FWkxtaWdsCnFSckJwSWdaRlBJekF3SGJMQWdRQUlJaVJBNVQrOXEvYmJmN2RQU24vMUhFREJHVXBpNlRnRklPRXNmRDUwbXEKejFvM3ZpZjV4eVgyYnlUdW8rU1IybHk1SXlub25xLy84SFJVV0k3eUc4eDd6U1ZMc2pMSUxGaUdLaXJSL0pUawptUDRpY3Z3VE5uZkZ3N0JTRlI4NlBSVDQzWnNWQWdNQkFBR2pXVEJYTUE0R0ExVWREd0VCL3dRRUF3SUNwREFQCkJnTlZIUk1CQWY4RUJUQURBUUgvTUIwR0ExVWREZ1FXQkJRNHVBQTE1dWJzU2ZjbkplSWdXTHUxKyttUFpUQVYKQmdOVkhSRUVEakFNZ2dwcmRXSmxjbTVsZEdWek1BMEdDU3FHU0liM0RRRUJDd1VBQTRJQkFRQk93Z1MzUDFTTApCZDgzL1ViSHhKdXdyY01icHA2WHVYRDFiN0FrVTBoS202NEZ3Ni9pU3N3N3YyNmhpUzNTdE1jbnpaZ1BORVptClF1VXFhUlpQWk5uYkVzN0x6T25NY3VvYVIrYXlxWk9vY2Y0YjV3V3dha1ViNVI3dG50ZldnbXNDQlhNYXZlWVUKblJ2Z3ByTEVTU0V2TVBaUytMN0tZS3p5NjBMWTI0WmJRWDRrSkUwMysxbkhCUWhuclNKV2pEU3RTM2RLS3ErUApMYzYzWGFIalI5UHdIQXQ0RHhtUFpsdEk0ZVFSQlQ5ckRLUHlyenk3dDNvMktHZGU1NGJBazZCVHlmbUF6K1BoCmE4bmVNbGRqSmgrRFZtcHJWcmZCRVVQdHRmRWVtejhQaFF2Z2ZPcjRnTmZtQTcxM2RPZUxvODFBalBIUzJ2WWoKZGY5aDZWMEkrTis2Ci0tLS0tRU5EIENFUlRJRklDQVRFLS0tLS0K"
+              }
+            ],
+            "cluster_id": null,
+            "compute_config": [
+              {
+                "enabled": false,
+                "node_pools": [],
+                "node_role_arn": ""
+              }
+            ],
+            "control_plane_scaling_config": [
+              {
+                "tier": "standard"
+              }
+            ],
+            "created_at": "2025-12-06T21:57:11Z",
+            "deletion_protection": false,
+            "enabled_cluster_log_types": [],
+            "encryption_config": [],
+            "endpoint": "https://A11EA5823DB6AE468FBF0A1813DBDF8D.gr7.us-east-1.eks.amazonaws.com",
+            "force_update_version": null,
+            "id": "eks-mecanicaos",
+            "identity": [
+              {
+                "oidc": [
+                  {
+                    "issuer": "https://oidc.eks.us-east-1.amazonaws.com/id/A11EA5823DB6AE468FBF0A1813DBDF8D"
+                  }
+                ]
+              }
+            ],
+            "kubernetes_network_config": [
+              {
+                "elastic_load_balancing": [
+                  {
+                    "enabled": false
+                  }
+                ],
+                "ip_family": "ipv4",
+                "service_ipv4_cidr": "172.20.0.0/16",
+                "service_ipv6_cidr": ""
+              }
+            ],
+            "name": "eks-mecanicaos",
+            "outpost_config": [],
+            "platform_version": "eks.46",
+            "region": "us-east-1",
+            "remote_network_config": [],
+            "role_arn": "arn:aws:iam::986773187161:role/c184635a4783074l13015582t1w986773-LabEksClusterRole-pUvbkhHBzJA1",
+            "status": "ACTIVE",
+            "storage_config": [
+              {
+                "block_storage": [
+                  {
+                    "enabled": false
+                  }
+                ]
+              }
+            ],
+            "tags": {
+              "Name": "eks-mecanicaos",
+              "Project": "MecanicaOS"
+            },
+            "tags_all": {
+              "Name": "eks-mecanicaos",
+              "Project": "MecanicaOS"
+            },
+            "timeouts": null,
+            "upgrade_policy": [
+              {
+                "support_type": "EXTENDED"
+              }
+            ],
+            "version": "1.31",
+            "vpc_config": [
+              {
+                "cluster_security_group_id": "sg-00a08c93bf16cc8c1",
+                "endpoint_private_access": false,
+                "endpoint_public_access": true,
+                "public_access_cidrs": [
+                  "0.0.0.0/0"
+                ],
+                "security_group_ids": [
+                  "sg-079defc8fb5ab315a"
+                ],
+                "subnet_ids": [
+                  "subnet-02d1b9fffe452bb97",
+                  "subnet-03b37d0cabccf3d46",
+                  "subnet-0f8c57a16ebe4853f"
+                ],
+                "vpc_id": "vpc-0c55d1db6febf7420"
+              }
+            ],
+            "zonal_shift_config": []
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxODAwMDAwMDAwMDAwLCJkZWxldGUiOjkwMDAwMDAwMDAwMCwidXBkYXRlIjozNjAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_iam_role.eks_cluster_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_eks_node_group",
+      "name": "nodes",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "ami_type": "AL2023_x86_64_STANDARD",
+            "arn": "arn:aws:eks:us-east-1:986773187161:nodegroup/eks-mecanicaos/nodegroup-mecanicaos/a2cd7ad9-1b77-07b3-aafb-e1fa60643ee5",
+            "capacity_type": "ON_DEMAND",
+            "cluster_name": "eks-mecanicaos",
+            "disk_size": 50,
+            "force_update_version": null,
+            "id": "eks-mecanicaos:nodegroup-mecanicaos",
+            "instance_types": [
+              "t3.medium"
+            ],
+            "labels": {},
+            "launch_template": [],
+            "node_group_name": "nodegroup-mecanicaos",
+            "node_group_name_prefix": "",
+            "node_repair_config": [],
+            "node_role_arn": "arn:aws:iam::986773187161:role/c184635a4783074l13015582t1w986773187-LabEksNodeRole-jDe3aIJ8I9XR",
+            "region": "us-east-1",
+            "release_version": "1.31.13-20251120",
+            "remote_access": [],
+            "resources": [
+              {
+                "autoscaling_groups": [
+                  {
+                    "name": "eks-nodegroup-mecanicaos-a2cd7ad9-1b77-07b3-aafb-e1fa60643ee5"
+                  }
+                ],
+                "remote_access_security_group_id": ""
+              }
+            ],
+            "scaling_config": [
+              {
+                "desired_size": 2,
+                "max_size": 3,
+                "min_size": 1
+              }
+            ],
+            "status": "ACTIVE",
+            "subnet_ids": [
+              "subnet-02d1b9fffe452bb97",
+              "subnet-03b37d0cabccf3d46",
+              "subnet-0f8c57a16ebe4853f"
+            ],
+            "tags": {
+              "Name": "nodegroup-mecanicaos",
+              "Project": "MecanicaOS"
+            },
+            "tags_all": {
+              "Name": "nodegroup-mecanicaos",
+              "Project": "MecanicaOS"
+            },
+            "taint": [],
+            "timeouts": null,
+            "update_config": [
+              {
+                "max_unavailable": 1,
+                "max_unavailable_percentage": 0
+              }
+            ],
+            "version": "1.31"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozNjAwMDAwMDAwMDAwLCJkZWxldGUiOjM2MDAwMDAwMDAwMDAsInVwZGF0ZSI6MzYwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_eks_cluster.eks",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_iam_role.eks_cluster_role",
+            "data.aws_iam_role.eks_node_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_internet_gateway",
+      "name": "igw",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:986773187161:internet-gateway/igw-05e52cbbd03575187",
+            "id": "igw-05e52cbbd03575187",
+            "owner_id": "986773187161",
+            "region": "us-east-1",
+            "tags": {
+              "Name": "mecanicaos-igw",
+              "Project": "MecanicaOS"
+            },
+            "tags_all": {
+              "Name": "mecanicaos-igw",
+              "Project": "MecanicaOS"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0c55d1db6febf7420"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjoxMjAwMDAwMDAwMDAwLCJkZWxldGUiOjEyMDAwMDAwMDAwMDAsInVwZGF0ZSI6MTIwMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route_table",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 0,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:986773187161:route-table/rtb-0541245e3aac8bca3",
+            "id": "rtb-0541245e3aac8bca3",
+            "owner_id": "986773187161",
+            "propagating_vgws": [],
+            "region": "us-east-1",
+            "route": [
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "0.0.0.0/0",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "igw-05e52cbbd03575187",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              },
+              {
+                "carrier_gateway_id": "",
+                "cidr_block": "10.0.0.0/16",
+                "core_network_arn": "",
+                "destination_prefix_list_id": "",
+                "egress_only_gateway_id": "",
+                "gateway_id": "local",
+                "ipv6_cidr_block": "",
+                "local_gateway_id": "",
+                "nat_gateway_id": "",
+                "network_interface_id": "",
+                "transit_gateway_id": "",
+                "vpc_endpoint_id": "",
+                "vpc_peering_connection_id": ""
+              }
+            ],
+            "tags": {
+              "Name": "mecanicaos-rt-public",
+              "Project": "MecanicaOS"
+            },
+            "tags_all": {
+              "Name": "mecanicaos-rt-public",
+              "Project": "MecanicaOS"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0c55d1db6febf7420"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "identity": {
+            "account_id": "986773187161",
+            "id": "rtb-0541245e3aac8bca3",
+            "region": "us-east-1"
+          },
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_internet_gateway.igw",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_route_table_association",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-04f6d7ba8940b79e6",
+            "region": "us-east-1",
+            "route_table_id": "rtb-0541245e3aac8bca3",
+            "subnet_id": "subnet-02d1b9fffe452bb97",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0425c0e1cd2a05bce",
+            "region": "us-east-1",
+            "route_table_id": "rtb-0541245e3aac8bca3",
+            "subnet_id": "subnet-03b37d0cabccf3d46",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 2,
+          "schema_version": 0,
+          "attributes": {
+            "gateway_id": "",
+            "id": "rtbassoc-0690d0993b2f75094",
+            "region": "us-east-1",
+            "route_table_id": "rtb-0541245e3aac8bca3",
+            "subnet_id": "subnet-0f8c57a16ebe4853f",
+            "timeouts": null
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjozMDAwMDAwMDAwMDAsImRlbGV0ZSI6MzAwMDAwMDAwMDAwLCJ1cGRhdGUiOjEyMDAwMDAwMDAwMH19",
+          "dependencies": [
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_subnet.public",
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_security_group",
+      "name": "eks",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:986773187161:security-group/sg-079defc8fb5ab315a",
+            "description": "Security group para EKS e services",
+            "egress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "All outbound",
+                "from_port": 0,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "-1",
+                "security_groups": [],
+                "self": false,
+                "to_port": 0
+              }
+            ],
+            "id": "sg-079defc8fb5ab315a",
+            "ingress": [
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "HTTP",
+                "from_port": 80,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 80
+              },
+              {
+                "cidr_blocks": [
+                  "0.0.0.0/0"
+                ],
+                "description": "HTTPS",
+                "from_port": 443,
+                "ipv6_cidr_blocks": [],
+                "prefix_list_ids": [],
+                "protocol": "tcp",
+                "security_groups": [],
+                "self": false,
+                "to_port": 443
+              }
+            ],
+            "name": "mecanicaos-sg",
+            "name_prefix": "",
+            "owner_id": "986773187161",
+            "region": "us-east-1",
+            "revoke_rules_on_delete": false,
+            "tags": {
+              "Name": "mecanicaos-sg",
+              "Project": "MecanicaOS"
+            },
+            "tags_all": {
+              "Name": "mecanicaos-sg",
+              "Project": "MecanicaOS"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0c55d1db6febf7420"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "identity": {
+            "account_id": "986773187161",
+            "id": "sg-079defc8fb5ab315a",
+            "region": "us-east-1"
+          },
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6OTAwMDAwMDAwMDAwfSwic2NoZW1hX3ZlcnNpb24iOiIxIn0=",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_subnet",
+      "name": "public",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "index_key": 0,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:986773187161:subnet/subnet-02d1b9fffe452bb97",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1a",
+            "availability_zone_id": "use1-az2",
+            "cidr_block": "10.0.0.0/20",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-02d1b9fffe452bb97",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "986773187161",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "region": "us-east-1",
+            "tags": {
+              "Name": "mecanicaos-subnet-1",
+              "Project": "MecanicaOS"
+            },
+            "tags_all": {
+              "Name": "mecanicaos-subnet-1",
+              "Project": "MecanicaOS"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0c55d1db6febf7420"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "identity": {
+            "account_id": "986773187161",
+            "id": "subnet-02d1b9fffe452bb97",
+            "region": "us-east-1"
+          },
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 1,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:986773187161:subnet/subnet-03b37d0cabccf3d46",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1b",
+            "availability_zone_id": "use1-az4",
+            "cidr_block": "10.0.16.0/20",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-03b37d0cabccf3d46",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "986773187161",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "region": "us-east-1",
+            "tags": {
+              "Name": "mecanicaos-subnet-2",
+              "Project": "MecanicaOS"
+            },
+            "tags_all": {
+              "Name": "mecanicaos-subnet-2",
+              "Project": "MecanicaOS"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0c55d1db6febf7420"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "identity": {
+            "account_id": "986773187161",
+            "id": "subnet-03b37d0cabccf3d46",
+            "region": "us-east-1"
+          },
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        },
+        {
+          "index_key": 2,
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:986773187161:subnet/subnet-0f8c57a16ebe4853f",
+            "assign_ipv6_address_on_creation": false,
+            "availability_zone": "us-east-1c",
+            "availability_zone_id": "use1-az6",
+            "cidr_block": "10.0.32.0/20",
+            "customer_owned_ipv4_pool": "",
+            "enable_dns64": false,
+            "enable_lni_at_device_index": 0,
+            "enable_resource_name_dns_a_record_on_launch": false,
+            "enable_resource_name_dns_aaaa_record_on_launch": false,
+            "id": "subnet-0f8c57a16ebe4853f",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_association_id": "",
+            "ipv6_native": false,
+            "map_customer_owned_ip_on_launch": false,
+            "map_public_ip_on_launch": true,
+            "outpost_arn": "",
+            "owner_id": "986773187161",
+            "private_dns_hostname_type_on_launch": "ip-name",
+            "region": "us-east-1",
+            "tags": {
+              "Name": "mecanicaos-subnet-3",
+              "Project": "MecanicaOS"
+            },
+            "tags_all": {
+              "Name": "mecanicaos-subnet-3",
+              "Project": "MecanicaOS"
+            },
+            "timeouts": null,
+            "vpc_id": "vpc-0c55d1db6febf7420"
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "identity": {
+            "account_id": "986773187161",
+            "id": "subnet-0f8c57a16ebe4853f",
+            "region": "us-east-1"
+          },
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDAsImRlbGV0ZSI6MTIwMDAwMDAwMDAwMH0sInNjaGVtYV92ZXJzaW9uIjoiMSJ9",
+          "dependencies": [
+            "aws_vpc.main"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "aws_vpc",
+      "name": "main",
+      "provider": "provider[\"registry.terraform.io/hashicorp/aws\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "arn": "arn:aws:ec2:us-east-1:986773187161:vpc/vpc-0c55d1db6febf7420",
+            "assign_generated_ipv6_cidr_block": false,
+            "cidr_block": "10.0.0.0/16",
+            "default_network_acl_id": "acl-0dc2031e6236f2632",
+            "default_route_table_id": "rtb-0ec36ab20645808b0",
+            "default_security_group_id": "sg-0ac90c6eae5c0f6e2",
+            "dhcp_options_id": "dopt-0a0a7ef8c0dd17724",
+            "enable_dns_hostnames": true,
+            "enable_dns_support": true,
+            "enable_network_address_usage_metrics": false,
+            "id": "vpc-0c55d1db6febf7420",
+            "instance_tenancy": "default",
+            "ipv4_ipam_pool_id": null,
+            "ipv4_netmask_length": null,
+            "ipv6_association_id": "",
+            "ipv6_cidr_block": "",
+            "ipv6_cidr_block_network_border_group": "",
+            "ipv6_ipam_pool_id": "",
+            "ipv6_netmask_length": 0,
+            "main_route_table_id": "rtb-0ec36ab20645808b0",
+            "owner_id": "986773187161",
+            "region": "us-east-1",
+            "tags": {
+              "Name": "mecanicaos-vpc",
+              "Project": "MecanicaOS"
+            },
+            "tags_all": {
+              "Name": "mecanicaos-vpc",
+              "Project": "MecanicaOS"
+            }
+          },
+          "sensitive_attributes": [],
+          "identity_schema_version": 0,
+          "identity": {
+            "account_id": "986773187161",
+            "id": "vpc-0c55d1db6febf7420",
+            "region": "us-east-1"
+          },
+          "private": "eyJzY2hlbWFfdmVyc2lvbiI6IjEifQ=="
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubectl_manifest",
+      "name": "k8s_configmap",
+      "provider": "provider[\"registry.terraform.io/gavinbunney/kubectl\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "api_version": "v1",
+            "apply_only": false,
+            "force_conflicts": false,
+            "force_new": false,
+            "id": "/api/v1/namespaces/mecanicaos/configmaps/api-configmap",
+            "ignore_fields": null,
+            "kind": "ConfigMap",
+            "live_manifest_incluster": "0a39b0e67854eb627aa6092159b3226aab4a1871d9e3bce5905a93d4a6075cc1",
+            "live_uid": "21e4170e-10de-41fb-b533-937aacb90948",
+            "name": "api-configmap",
+            "namespace": "mecanicaos",
+            "override_namespace": null,
+            "sensitive_fields": null,
+            "server_side_apply": false,
+            "timeouts": null,
+            "uid": "21e4170e-10de-41fb-b533-937aacb90948",
+            "validate_schema": true,
+            "wait": null,
+            "wait_for_rollout": true,
+            "yaml_body": "apiVersion: v1\r\nkind: ConfigMap\r\nmetadata:\r\n  name: api-configmap\r\n  namespace: mecanicaos\r\ndata:\r\n  ASPNETCORE_ENVIRONMENT: \"production\"\r\n  ASPNETCORE_URLS: \"http://+:80\"\r\n  ConnectionStrings__DefaultConnection: \"Host=aws-1-sa-east-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.uniaamdoomwnxtpmgcxs;Password=Q3qV@dS2Te*kKGZ;SSL Mode=Require;Trust Server Certificate=true\"\r\n  Jwt__Issuer: \"MecanicaOS\"\r\n  Jwt__Audience: \"MecanicaOS-API\"\r\n  Jwt__ExpiryInMinutes: \"120\"",
+            "yaml_body_parsed": "apiVersion: v1\ndata:\n  ASPNETCORE_ENVIRONMENT: production\n  ASPNETCORE_URLS: http://+:80\n  ConnectionStrings__DefaultConnection: Host=aws-1-sa-east-1.pooler.supabase.com;Port=5432;Database=postgres;Username=postgres.uniaamdoomwnxtpmgcxs;Password=Q3qV@dS2Te*kKGZ;SSL\n    Mode=Require;Trust Server Certificate=true\n  Jwt__Audience: MecanicaOS-API\n  Jwt__ExpiryInMinutes: \"120\"\n  Jwt__Issuer: MecanicaOS\nkind: ConfigMap\nmetadata:\n  name: api-configmap\n  namespace: mecanicaos\n",
+            "yaml_incluster": "0a39b0e67854eb627aa6092159b3226aab4a1871d9e3bce5905a93d4a6075cc1"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "live_manifest_incluster"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_body"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_incluster"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDB9LCJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_eks_access_entry.lab_role",
+            "aws_eks_access_policy_association.lab_role_admin",
+            "aws_eks_cluster.eks",
+            "aws_eks_node_group.nodes",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_caller_identity.current",
+            "data.aws_eks_cluster.cluster",
+            "data.aws_eks_cluster_auth.auth",
+            "data.aws_iam_role.eks_cluster_role",
+            "data.aws_iam_role.eks_node_role",
+            "data.aws_iam_role.lab_role",
+            "kubectl_manifest.k8s_namespace"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubectl_manifest",
+      "name": "k8s_deployment",
+      "provider": "provider[\"registry.terraform.io/gavinbunney/kubectl\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "api_version": "apps/v1",
+            "apply_only": false,
+            "force_conflicts": false,
+            "force_new": false,
+            "id": "/apis/apps/v1/namespaces/mecanicaos/deployments/mecanicaos-api",
+            "ignore_fields": null,
+            "kind": "Deployment",
+            "live_manifest_incluster": "c03195d87585f651776a94b6aa119e57afe85a54723d7346608ee897e9019154",
+            "live_uid": "63cd30a7-f926-4d2a-bec2-4cd01653eb22",
+            "name": "mecanicaos-api",
+            "namespace": "mecanicaos",
+            "override_namespace": null,
+            "sensitive_fields": null,
+            "server_side_apply": false,
+            "timeouts": null,
+            "uid": "63cd30a7-f926-4d2a-bec2-4cd01653eb22",
+            "validate_schema": true,
+            "wait": null,
+            "wait_for_rollout": true,
+            "yaml_body": "apiVersion: apps/v1\r\nkind: Deployment\r\nmetadata:\r\n  name: mecanicaos-api\r\n  namespace: mecanicaos\r\n  labels:\r\n    app: mecanicaos-api\r\nspec:\r\n  replicas: 2\r\n  selector:\r\n    matchLabels:\r\n      app: mecanicaos-api\r\n  template:\r\n    metadata:\r\n      labels:\r\n        app: mecanicaos-api\r\n    spec:\r\n      containers:\r\n        - name: mecanicaos-api\r\n          image: 986773187161.dkr.ecr.us-east-1.amazonaws.com/mecanicaos-ecr:20251206-192659\r\n          ports:\r\n            - containerPort: 80\r\n          envFrom:\r\n            - configMapRef:\r\n                name: api-configmap\r\n            - secretRef:\r\n                name: api-secret\r\n          resources:\r\n            requests:\r\n              cpu: 100m\r\n            limits:\r\n              cpu: 500m\r\n",
+            "yaml_body_parsed": "apiVersion: apps/v1\nkind: Deployment\nmetadata:\n  labels:\n    app: mecanicaos-api\n  name: mecanicaos-api\n  namespace: mecanicaos\nspec:\n  replicas: 2\n  selector:\n    matchLabels:\n      app: mecanicaos-api\n  template:\n    metadata:\n      labels:\n        app: mecanicaos-api\n    spec:\n      containers:\n      - envFrom:\n        - configMapRef:\n            name: api-configmap\n        - secretRef:\n            name: api-secret\n        image: 986773187161.dkr.ecr.us-east-1.amazonaws.com/mecanicaos-ecr:20251206-192659\n        name: mecanicaos-api\n        ports:\n        - containerPort: 80\n        resources:\n          limits:\n            cpu: 500m\n          requests:\n            cpu: 100m\n",
+            "yaml_incluster": "c03195d87585f651776a94b6aa119e57afe85a54723d7346608ee897e9019154"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "live_manifest_incluster"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_body"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_incluster"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDB9LCJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_eks_access_entry.lab_role",
+            "aws_eks_access_policy_association.lab_role_admin",
+            "aws_eks_cluster.eks",
+            "aws_eks_node_group.nodes",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_caller_identity.current",
+            "data.aws_eks_cluster.cluster",
+            "data.aws_eks_cluster_auth.auth",
+            "data.aws_iam_role.eks_cluster_role",
+            "data.aws_iam_role.eks_node_role",
+            "data.aws_iam_role.lab_role",
+            "kubectl_manifest.k8s_configmap",
+            "kubectl_manifest.k8s_namespace",
+            "kubectl_manifest.k8s_secret"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubectl_manifest",
+      "name": "k8s_hpa",
+      "provider": "provider[\"registry.terraform.io/gavinbunney/kubectl\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "api_version": "autoscaling/v2",
+            "apply_only": false,
+            "force_conflicts": false,
+            "force_new": false,
+            "id": "/apis/autoscaling/v2/namespaces/mecanicaos/horizontalpodautoscalers/mecanicaos-hpa",
+            "ignore_fields": null,
+            "kind": "HorizontalPodAutoscaler",
+            "live_manifest_incluster": "c6ad14acba1b7d601a30b58500f605a805625b1079935581305ceb627e466eb2",
+            "live_uid": "22ed65ab-2702-4354-bd61-e8e8764e1c9c",
+            "name": "mecanicaos-hpa",
+            "namespace": "mecanicaos",
+            "override_namespace": null,
+            "sensitive_fields": null,
+            "server_side_apply": false,
+            "timeouts": null,
+            "uid": "22ed65ab-2702-4354-bd61-e8e8764e1c9c",
+            "validate_schema": true,
+            "wait": null,
+            "wait_for_rollout": true,
+            "yaml_body": "apiVersion: autoscaling/v2\r\nkind: HorizontalPodAutoscaler\r\nmetadata:\r\n  name: mecanicaos-hpa\r\n  namespace: mecanicaos\r\nspec:\r\n  scaleTargetRef:\r\n    apiVersion: apps/v1\r\n    kind: Deployment\r\n    name: mecanicaos-api\r\n  minReplicas: 1\r\n  maxReplicas: 10\r\n  metrics:\r\n    - type: Resource\r\n      resource:\r\n        name: cpu\r\n        target:\r\n          type: Utilization\r\n          averageUtilization: 70",
+            "yaml_body_parsed": "apiVersion: autoscaling/v2\nkind: HorizontalPodAutoscaler\nmetadata:\n  name: mecanicaos-hpa\n  namespace: mecanicaos\nspec:\n  maxReplicas: 10\n  metrics:\n  - resource:\n      name: cpu\n      target:\n        averageUtilization: 70\n        type: Utilization\n    type: Resource\n  minReplicas: 1\n  scaleTargetRef:\n    apiVersion: apps/v1\n    kind: Deployment\n    name: mecanicaos-api\n",
+            "yaml_incluster": "c6ad14acba1b7d601a30b58500f605a805625b1079935581305ceb627e466eb2"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "live_manifest_incluster"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_body"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_incluster"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDB9LCJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_eks_access_entry.lab_role",
+            "aws_eks_access_policy_association.lab_role_admin",
+            "aws_eks_cluster.eks",
+            "aws_eks_node_group.nodes",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_caller_identity.current",
+            "data.aws_eks_cluster.cluster",
+            "data.aws_eks_cluster_auth.auth",
+            "data.aws_iam_role.eks_cluster_role",
+            "data.aws_iam_role.eks_node_role",
+            "data.aws_iam_role.lab_role",
+            "kubectl_manifest.k8s_configmap",
+            "kubectl_manifest.k8s_deployment",
+            "kubectl_manifest.k8s_namespace",
+            "kubectl_manifest.k8s_secret"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubectl_manifest",
+      "name": "k8s_namespace",
+      "provider": "provider[\"registry.terraform.io/gavinbunney/kubectl\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "api_version": "v1",
+            "apply_only": false,
+            "force_conflicts": false,
+            "force_new": false,
+            "id": "/api/v1/namespaces/mecanicaos",
+            "ignore_fields": null,
+            "kind": "Namespace",
+            "live_manifest_incluster": "969fd18660f638525817835013d6911625f706d1cb3ec072dac9cdbd1cd8292a",
+            "live_uid": "421e7fd2-12c5-403e-9bc6-1418b178480e",
+            "name": "mecanicaos",
+            "namespace": null,
+            "override_namespace": null,
+            "sensitive_fields": null,
+            "server_side_apply": false,
+            "timeouts": null,
+            "uid": "421e7fd2-12c5-403e-9bc6-1418b178480e",
+            "validate_schema": true,
+            "wait": null,
+            "wait_for_rollout": true,
+            "yaml_body": "apiVersion: v1\r\nkind: Namespace\r\nmetadata:\r\n  name: mecanicaos\r\n",
+            "yaml_body_parsed": "apiVersion: v1\nkind: Namespace\nmetadata:\n  name: mecanicaos\n",
+            "yaml_incluster": "969fd18660f638525817835013d6911625f706d1cb3ec072dac9cdbd1cd8292a"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "live_manifest_incluster"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_body"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_incluster"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDB9LCJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_eks_access_entry.lab_role",
+            "aws_eks_access_policy_association.lab_role_admin",
+            "aws_eks_cluster.eks",
+            "aws_eks_node_group.nodes",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_eks_cluster.cluster",
+            "data.aws_eks_cluster_auth.auth",
+            "data.aws_iam_role.eks_cluster_role",
+            "data.aws_iam_role.eks_node_role",
+            "data.aws_iam_role.lab_role"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubectl_manifest",
+      "name": "k8s_secret",
+      "provider": "provider[\"registry.terraform.io/gavinbunney/kubectl\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "api_version": "v1",
+            "apply_only": false,
+            "force_conflicts": false,
+            "force_new": false,
+            "id": "/api/v1/namespaces/mecanicaos/secrets/api-secret",
+            "ignore_fields": null,
+            "kind": "Secret",
+            "live_manifest_incluster": "570ec90a78f6d25d72f0020495ccc214965e5a38d8ac8ff1330cc0e636d250ff",
+            "live_uid": "15b6ef06-30af-41db-8b97-297bb284c8c9",
+            "name": "api-secret",
+            "namespace": "mecanicaos",
+            "override_namespace": null,
+            "sensitive_fields": null,
+            "server_side_apply": false,
+            "timeouts": null,
+            "uid": "15b6ef06-30af-41db-8b97-297bb284c8c9",
+            "validate_schema": true,
+            "wait": null,
+            "wait_for_rollout": true,
+            "yaml_body": "apiVersion: v1\r\nkind: Secret\r\nmetadata:\r\n  name: api-secret\r\n  namespace: mecanicaos\r\ntype: Opaque\r\nstringData:\r\n  Jwt__SecretKey: \"5sBGFgI5yhtbfB50Xyohk9RLX/pWX7mRRLSP1pwceIdyD/Is6DkG6QTjELYjZSa7\"",
+            "yaml_body_parsed": "apiVersion: v1\nkind: Secret\nmetadata:\n  name: api-secret\n  namespace: mecanicaos\nstringData:\n  Jwt__SecretKey: 5sBGFgI5yhtbfB50Xyohk9RLX/pWX7mRRLSP1pwceIdyD/Is6DkG6QTjELYjZSa7\ntype: Opaque\n",
+            "yaml_incluster": "570ec90a78f6d25d72f0020495ccc214965e5a38d8ac8ff1330cc0e636d250ff"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "live_manifest_incluster"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_body"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_incluster"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDB9LCJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_eks_access_entry.lab_role",
+            "aws_eks_access_policy_association.lab_role_admin",
+            "aws_eks_cluster.eks",
+            "aws_eks_node_group.nodes",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_caller_identity.current",
+            "data.aws_eks_cluster.cluster",
+            "data.aws_eks_cluster_auth.auth",
+            "data.aws_iam_role.eks_cluster_role",
+            "data.aws_iam_role.eks_node_role",
+            "data.aws_iam_role.lab_role",
+            "kubectl_manifest.k8s_namespace"
+          ]
+        }
+      ]
+    },
+    {
+      "mode": "managed",
+      "type": "kubectl_manifest",
+      "name": "k8s_service",
+      "provider": "provider[\"registry.terraform.io/gavinbunney/kubectl\"]",
+      "instances": [
+        {
+          "schema_version": 1,
+          "attributes": {
+            "api_version": "v1",
+            "apply_only": false,
+            "force_conflicts": false,
+            "force_new": false,
+            "id": "/api/v1/namespaces/mecanicaos/services/mecanicaos-service",
+            "ignore_fields": null,
+            "kind": "Service",
+            "live_manifest_incluster": "9c82105feb9e0aafac9ae070e59e36d764141896b0bf4a8bcaf887ba0e1c7b79",
+            "live_uid": "7dba3fc4-8ee0-443f-aec8-afe5ad086419",
+            "name": "mecanicaos-service",
+            "namespace": "mecanicaos",
+            "override_namespace": null,
+            "sensitive_fields": null,
+            "server_side_apply": false,
+            "timeouts": null,
+            "uid": "7dba3fc4-8ee0-443f-aec8-afe5ad086419",
+            "validate_schema": true,
+            "wait": null,
+            "wait_for_rollout": true,
+            "yaml_body": "apiVersion: v1\r\nkind: Service\r\nmetadata:\r\n  name: mecanicaos-service\r\n  namespace: mecanicaos\r\n  labels:\r\n    app: mecanicaos-api\r\nspec:\r\n  selector:\r\n    app: mecanicaos-api\r\n  type: LoadBalancer\r\n  ports:\r\n    - protocol: TCP\r\n      port: 80\r\n      targetPort: 80",
+            "yaml_body_parsed": "apiVersion: v1\nkind: Service\nmetadata:\n  labels:\n    app: mecanicaos-api\n  name: mecanicaos-service\n  namespace: mecanicaos\nspec:\n  ports:\n  - port: 80\n    protocol: TCP\n    targetPort: 80\n  selector:\n    app: mecanicaos-api\n  type: LoadBalancer\n",
+            "yaml_incluster": "9c82105feb9e0aafac9ae070e59e36d764141896b0bf4a8bcaf887ba0e1c7b79"
+          },
+          "sensitive_attributes": [
+            [
+              {
+                "type": "get_attr",
+                "value": "live_manifest_incluster"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_body"
+              }
+            ],
+            [
+              {
+                "type": "get_attr",
+                "value": "yaml_incluster"
+              }
+            ]
+          ],
+          "identity_schema_version": 0,
+          "private": "eyJlMmJmYjczMC1lY2FhLTExZTYtOGY4OC0zNDM2M2JjN2M0YzAiOnsiY3JlYXRlIjo2MDAwMDAwMDAwMDB9LCJzY2hlbWFfdmVyc2lvbiI6IjEifQ==",
+          "dependencies": [
+            "aws_eks_access_entry.lab_role",
+            "aws_eks_access_policy_association.lab_role_admin",
+            "aws_eks_cluster.eks",
+            "aws_eks_node_group.nodes",
+            "aws_internet_gateway.igw",
+            "aws_route_table.public",
+            "aws_route_table_association.public",
+            "aws_security_group.eks",
+            "aws_subnet.public",
+            "aws_vpc.main",
+            "data.aws_caller_identity.current",
+            "data.aws_eks_cluster.cluster",
+            "data.aws_eks_cluster_auth.auth",
+            "data.aws_iam_role.eks_cluster_role",
+            "data.aws_iam_role.eks_node_role",
+            "data.aws_iam_role.lab_role",
+            "kubectl_manifest.k8s_configmap",
+            "kubectl_manifest.k8s_deployment",
+            "kubectl_manifest.k8s_namespace",
+            "kubectl_manifest.k8s_secret"
+          ]
+        }
+      ]
+    }
+  ],
+  "check_results": null
+}

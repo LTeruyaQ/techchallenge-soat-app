@@ -119,13 +119,19 @@ namespace Adapters.Controllers
             return new AtualizarOrdemServicoUseCaseDto
             {
                 Descricao = request.Descricao,
-                Status = request.Status
+                Status = request.Status,
+                DataEnvioOrcamento = request.DataEnvioOrcamento
             };
         }
 
         public async Task AceitarOrcamento(Guid id)
         {
             await _ordemServicoUseCases.AceitarOrcamentoUseCaseAsync(id);
+
+            await _ordemServicoUseCases.AtualizarUseCaseAsync(id, new AtualizarOrdemServicoUseCaseDto
+            {
+                Status = StatusOrdemServico.EmExecucao,
+            });
         }
 
         public async Task RecusarOrcamento(Guid id)
