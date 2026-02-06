@@ -1,0 +1,46 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-init-job
+  namespace: build
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+      - name: db-init
+        image: postgres:13
+        env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: rds-credentials
+              key: password
+        - name: PGHOST
+          valueFrom:
+            secretKeyRef:
+              name: rds-credentials
+              key: host
+        - name: PGUSER
+          valueFrom:
+            secretKeyRef:
+              name: rds-credentials
+              key: user
+        - name: PGDATABASE
+          valueFrom:
+            secretKeyRef:
+              name: rds-credentials
+              key: dbname
+        command:
+        - "/bin/sh"
+        - "-c"
+        - |
+          psql -f /config/init.sql
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+      volumes:
+      - name: config-volume
+        configMap:
+          name: rds-init-sql-configmap
+  backoffLimit: 4

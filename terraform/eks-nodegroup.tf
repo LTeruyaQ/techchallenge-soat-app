@@ -7,7 +7,7 @@ resource "aws_eks_node_group" "nodes" {
   node_group_name = "nodegroup-${var.project_name}"
 
   # Usando role do AWS Academy
-  node_role_arn = data.aws_iam_role.eks_node_role.arn
+  node_role_arn = local.eks_node_role_arn
 
   subnet_ids     = aws_subnet.public[*].id
   disk_size      = 50

@@ -1,224 +1,212 @@
 # ============================================
 # Script de Deploy COMPLETO - MecanicaOS (AWS Academy)
-# Com Sanity Check obrigatório
 # ============================================
 
 param(
-    [switch]$SkipBuild,
-    [switch]$SkipInfra,
     [switch]$Destroy,
     [switch]$Plan,
-    [string]$AWS_REGION = "us-east-1",
-    [string]$ECR_REPO_NAME = "mecanicaos-ecr"
+    [string]$AWS_REGION = "us-east-1"
 )
 
+# Termina o script imediatamente se qualquer comando falhar
 $ErrorActionPreference = "Stop"
 
 # ======================================================
 # FUNÇÕES DE LOG
 # ======================================================
-
-function Write-Title($msg) {
-    Write-Host ""
-    Write-Host "============================================" -ForegroundColor Cyan
-    Write-Host " $msg" -ForegroundColor Cyan
-    Write-Host "============================================" -ForegroundColor Cyan
-}
+function Write-Title($msg) { Write-Host "`n============================================" -ForegroundColor Cyan; Write-Host " $msg" -ForegroundColor Cyan; Write-Host "============================================" -ForegroundColor Cyan }
 function Write-Step($msg)     { Write-Host "`n==> $msg" -ForegroundColor Yellow }
 function Write-Success($msg)  { Write-Host "[OK] $msg" -ForegroundColor Green }
-function Write-Warning($msg)  { Write-Host "[!] $msg" -ForegroundColor Yellow }
 function Write-ErrorMsg($msg) { Write-Host "[X] $msg" -ForegroundColor Red }
 function Write-Info($msg)     { Write-Host "    $msg" -ForegroundColor Gray }
 
-# ======================================================
-# ETAPA 0: SANITY CHECK
-# ======================================================
-
-Write-Title "ETAPA 0: Sanity Check do Ambiente"
-
-if (-not (Test-Path ".\sanity-check.ps1")) {
-    Write-ErrorMsg "sanity-check.ps1 não encontrado"
-    exit 1
-}
-
-try {
-    Write-Step "Executando sanity-check.ps1"
-    .\sanity-check.ps1
-    Write-Success "Sanity check passou"
-} catch {
-    Write-ErrorMsg "Sanity check falhou"
-    throw
-}
-
-# ======================================================
-# ETAPA 1: PRÉ-REQUISITOS
-# ======================================================
-
-Write-Title "ETAPA 1: Verificando Pré-requisitos"
-
-foreach ($cmd in @("aws", "terraform", "kubectl", "docker")) {
-    if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) {
-        Write-ErrorMsg "$cmd não encontrado no PATH"
+# Função para checar o resultado do último comando
+function Check-Last-Exit-Code {
+    if ($LASTEXITCODE -ne 0) {
+        Write-ErrorMsg "Comando anterior falhou com código de saída $LASTEXITCODE. Abortando."
         exit 1
     }
 }
 
-try {
-    docker info | Out-Null
-    Write-Success "Docker rodando"
-} catch {
-    Write-ErrorMsg "Docker não está rodando"
+# ======================================================
+# ETAPA 0: SANITY CHECK
+# ======================================================
+Write-Title "ETAPA 0: Sanity Check do Ambiente"
+if (-not (Test-Path ".\sanity-check.ps1")) {
+    Write-ErrorMsg "sanity-check.ps1 não encontrado."
     exit 1
+}
+try {
+    Write-Step "Executando sanity-check.ps1"
+    .\sanity-check.ps1
+    Check-Last-Exit-Code
+    Write-Success "Sanity check passou."
+} catch {
+    Write-ErrorMsg "Sanity check falhou."
+    throw
 }
 
 # ======================================================
-# ETAPA 2: CREDENCIAIS AWS
+# ETAPA 1: CREDENCIAIS AWS
 # ======================================================
-
-Write-Title "ETAPA 2: Validando Credenciais AWS"
-
+Write-Title "ETAPA 1: Verificando Credenciais AWS"
 try {
     $identity = aws sts get-caller-identity --output json | ConvertFrom-Json
     $AWS_ACCOUNT_ID = $identity.Account
     Write-Success "AWS Account ID: $AWS_ACCOUNT_ID"
 } catch {
-    Write-ErrorMsg "Credenciais AWS inválidas"
+    Write-ErrorMsg "Credenciais AWS inválidas."
     exit 1
 }
 
 # ======================================================
-# ETAPA 3: TFVARS / MODOS
+# ETAPA 2: DETECÇÃO DE RECURSOS EXISTENTES
 # ======================================================
+Write-Title "ETAPA 2: Detecção de Recursos Existentes"
+$ProjectName = "mecanicaos" # Usado para filtrar tags
 
-Write-Title "ETAPA 3: Validando terraform.tfvars"
+Write-Step "Procurando por VPC existente com a tag 'Project=MecanicaOS'..."
+$VpcId = aws ec2 describe-vpcs --filters "Name=tag:Project,Values=$ProjectName" --query "Vpcs[0].VpcId" --output text
+if ($VpcId -ne "None") {
+    Write-Success "VPC encontrada: $VpcId"
+    $env:TF_VAR_existing_vpc_id = $VpcId
 
-if (-not (Test-Path "terraform.tfvars")) {
-    Write-ErrorMsg "terraform.tfvars não encontrado"
-    exit 1
+    Write-Step "Procurando por subnets privadas existentes..."
+    $PrivateSubnetIds = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" "Name=tag:Name,Values=$ProjectName-private-subnet-*" --query "Subnets[*].SubnetId" --output json | ConvertFrom-Json
+    if ($PrivateSubnetIds.Count -gt 0) {
+        Write-Success "Subnets privadas encontradas: $($PrivateSubnetIds -join ', ')"
+        $env:TF_VAR_existing_private_subnet_ids = ($PrivateSubnetIds | ConvertTo-Json -Compress)
+    }
+
+    Write-Step "Procurando por subnets públicas existentes (por exclusão)..."
+    $AllProjectSubnets = aws ec2 describe-subnets --filters "Name=vpc-id,Values=$VpcId" "Name=tag:Project,Values=$ProjectName" --query "Subnets[*].SubnetId" --output json | ConvertFrom-Json
+    $PublicSubnetIds = @()
+    if ($AllProjectSubnets.Count -gt 0) {
+        # Compara a lista de todas as subnets com as privadas para encontrar as públicas
+        $PublicSubnetIds = Compare-Object $AllProjectSubnets $PrivateSubnetIds -PassThru
+    }
+
+    if ($PublicSubnetIds.Count -gt 0) {
+        Write-Success "Subnets públicas encontradas: $($PublicSubnetIds -join ', ')"
+        $env:TF_VAR_existing_public_subnet_ids = ($PublicSubnetIds | ConvertTo-Json -Compress)
+    }
+} else {
+    Write-Info "Nenhuma VPC existente encontrada. Uma nova será criada."
 }
 
+
+# ======================================================
+# ETAPA 2.5: MODOS DE EXECUÇÃO (DESTROY / PLAN)
+# ======================================================
 if ($Destroy) {
     Write-Title "MODO DESTROY"
-    terraform init
-    terraform destroy -auto-approve
+    terraform init; Check-Last-Exit-Code
+    terraform destroy -auto-approve; Check-Last-Exit-Code
+    Write-Success "Infraestrutura destruída."
     exit 0
 }
 
 if ($Plan) {
     Write-Title "MODO PLAN"
-    terraform init
-    terraform plan
+    terraform init; Check-Last-Exit-Code
+    terraform plan; Check-Last-Exit-Code
+    Write-Success "Plano gerado."
     exit 0
 }
 
 # ======================================================
-# ETAPA 4: BUILD COM KANIKO
+# ETAPA 3: PREPARAÇÃO DO PACOTE DA LAMBDA
 # ======================================================
+Write-Title "ETAPA 3: Preparação do Pacote da Lambda"
+$LambdaPackageDir = ".\lambda\package"
 
-if (-not $SkipBuild) {
+Write-Step "Limpando diretório de pacote antigo..."
+if (Test-Path $LambdaPackageDir) {
+    Remove-Item -Recurse -Force $LambdaPackageDir
+}
+New-Item -ItemType Directory -Path $LambdaPackageDir | Out-Null
 
-    Write-Title "ETAPA 4: Garantindo ECR"
-    terraform init
-    terraform apply -target=aws_ecr_repository.app -auto-approve
+Write-Step "Instalando dependências Python..."
+if (Test-Path ".\lambda\requirements.txt") {
+    pip install --target $LambdaPackageDir -r ".\lambda\requirements.txt"; Check-Last-Exit-Code
+    Write-Success "Dependências da Lambda instaladas."
+} else {
+    Write-Warning "Arquivo requirements.txt não encontrado."
+}
 
-    Write-Title "ETAPA 5: Build com Kaniko"
+Write-Step "Copiando o código da função Lambda..."
+Copy-Item -Path ".\lambda\main.py" -Destination $LambdaPackageDir; Check-Last-Exit-Code
+Write-Success "Código da Lambda copiado para o diretório do pacote."
 
-    $GITHUB_USER = "LTeruyaQ"
-    $REPO_NAME   = "techchallenge-soat-app"
-    $env:GIT_TOKEN = "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"
+# ======================================================
+# ETAPA 4: DEPLOY DA INFRAESTRUTURA COMPLETA
+# ======================================================
+Write-Title "ETAPA 4: Deploy da Infraestrutura (VPC, EKS, RDS, Lambda, API GW)"
 
-    if (-not $env:GIT_TOKEN) {
-        Write-ErrorMsg "Defina a variável de ambiente GIT_TOKEN"
-        exit 1
-    }
+# Injeta variáveis vazias para suprimir prompts de observability
+$env:TF_VAR_datadog_api_key = ""
+$env:TF_VAR_newrelic_license_key = ""
 
-    $IMAGE_TAG = Get-Date -Format "yyyyMMdd-HHmmss"
-    $ECR_URI   = "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME"
-    $JOB_NAME  = "kaniko-build-$IMAGE_TAG"
-    $NAMESPACE = "build"
+terraform init; Check-Last-Exit-Code
+terraform validate; Check-Last-Exit-Code
+Write-Step "Aplicando a configuração do Terraform... Isso pode levar vários minutos."
+terraform apply -auto-approve; Check-Last-Exit-Code
+Write-Success "Infraestrutura provisionada com sucesso."
 
-    kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+# ======================================================
+# ETAPA 4: CONFIGURANDO KUBECTL
+# ======================================================
+Write-Title "ETAPA 4: Configurando kubectl"
+$EKS_CLUSTER_NAME = terraform output -raw eks_cluster_name; Check-Last-Exit-Code
+aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME; Check-Last-Exit-Code
+Write-Success "kubectl configurado para o cluster '$EKS_CLUSTER_NAME'."
 
-    kubectl delete secret aws-creds -n $NAMESPACE --ignore-not-found | Out-Null
-    kubectl create secret generic aws-creds `
-        -n $NAMESPACE `
-        --from-literal=AWS_ACCESS_KEY_ID=$env:AWS_ACCESS_KEY_ID `
-        --from-literal=AWS_SECRET_ACCESS_KEY=$env:AWS_SECRET_ACCESS_KEY `
-        --from-literal=AWS_DEFAULT_REGION=$AWS_REGION | Out-Null
+# ======================================================
+# ETAPA 5: DEPLOY DA APLICAÇÃO NO EKS
+# ======================================================
+Write-Title "ETAPA 5: Deploy da Aplicação no EKS"
+kubectl apply -f "..\k8s\"; Check-Last-Exit-Code
+Write-Step "Aguardando alguns segundos para os pods da aplicação iniciarem..."
+Start-Sleep -Seconds 30
+Write-Success "Deploy da aplicação enviado ao EKS."
 
-    Write-Step "Criando Job Kaniko"
+# ======================================================
+# ETAPA 6: INICIALIZAÇÃO DO BANCO DE DADOS
+# ======================================================
+Write-Title "ETAPA 6: Inicialização do Banco de Dados"
+Write-Step "Obtendo detalhes de conexão do RDS..."
+$RDSEndpoint = terraform output -raw rds_endpoint; Check-Last-Exit-Code
+$RDSUsername = terraform output -raw rds_username; Check-Last-Exit-Code
+$RDSPassword = terraform output -raw --sensitive rds_password; Check-Last-Exit-Code
+$DBName      = terraform output -raw rds_dbname; Check-Last-Exit-Code
 
-$jobYaml = @"
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: $JOB_NAME
-  namespace: $NAMESPACE
-spec:
-  backoffLimit: 0
-  template:
-    spec:
-      restartPolicy: Never
-      containers:
-      - name: kaniko
-        image: gcr.io/kaniko-project/executor:latest
-        envFrom:
-        - secretRef:
-            name: aws-creds
-        args:
-        - "--context=git://github.com/$GITHUB_USER/$REPO_NAME.git"
-        - "--dockerfile=Dockerfile"
-        - "--destination=${ECR_URI}:$IMAGE_TAG"
-        - "--destination=${ECR_URI}:latest"
-"@
-
-    $jobYaml | kubectl apply -f -
-
-    Write-Success "Job Kaniko submetido"
+Write-Step "Executando script SQL (rds-init.sql)..."
+try {
+    $env:PGPASSWORD = $RDSPassword
+    psql --host=$RDSEndpoint --port=5432 --username=$RDSUsername --dbname=$DBName -f ".\rds-init.sql"
+    Check-Last-Exit-Code
+    Write-Success "Banco de dados inicializado com sucesso."
+} catch {
+    Write-ErrorMsg "Falha ao executar o script SQL. Verifique se 'psql' está instalado e no PATH."
+    throw
+} finally {
+    if (Test-Path Env:\PGPASSWORD) { Remove-Item Env:\PGPASSWORD }
 }
 
 # ======================================================
-# ETAPA 6: INFRA (EKS)
+# ETAPA 7: RESUMO FINAL DO DEPLOY
 # ======================================================
+Write-Title "ETAPA 7: Resumo do Deploy"
+$ApiGatewayUrl = terraform output -raw api_gateway_endpoint; Check-Last-Exit-Code
+$SwaggerUrl = "$ApiGatewayUrl/swagger" # Assumindo que o Swagger está em /swagger
 
-if (-not $SkipInfra) {
+Write-Success "✔️ EKS Cluster Criado: $EKS_CLUSTER_NAME"
+Write-Success "✔️ RDS Endpoint Criado: $RDSEndpoint"
+Write-Success "✔️ Lambda de Autenticação Criada"
+Write-Success "✔️ API Gateway Criado"
+Write-Info  "-------------------------------------------"
+Write-Info  "URL Pública da API: $ApiGatewayUrl"
+Write-Info  "URL do Swagger UI:  $SwaggerUrl"
+Write-Info  "-------------------------------------------"
 
-    Write-Title "ETAPA 6: Deploy Terraform"
-
-    $clusterRole = aws iam list-roles --query "Roles[?contains(RoleName,'LabEksClusterRole')].RoleName | [0]" --output text
-    $nodeRole    = aws iam list-roles --query "Roles[?contains(RoleName,'LabEksNodeRole')].RoleName | [0]" --output text
-
-    if (-not $clusterRole -or -not $nodeRole) {
-        Write-ErrorMsg "Roles do EKS não encontradas (AWS Academy)"
-        exit 1
-    }
-
-    $env:TF_VAR_eks_cluster_role = $clusterRole
-    $env:TF_VAR_eks_node_role    = $nodeRole
-
-    terraform init
-    terraform validate
-    terraform apply -auto-approve
-}
-
-# ======================================================
-# ETAPA 7: KUBECONFIG
-# ======================================================
-
-Write-Title "ETAPA 7: Configurando kubectl"
-
-$EKS_CLUSTER_NAME = terraform output -raw eks_cluster_name
-aws eks update-kubeconfig --region $AWS_REGION --name $EKS_CLUSTER_NAME
-
-Write-Success "kubectl configurado"
-
-# ======================================================
-# ETAPA 8: VERIFICAÇÃO FINAL
-# ======================================================
-
-Write-Title "ETAPA 8: Verificação Final"
-
-kubectl get pods -A
-kubectl get svc  -A
-
-Write-Success "Deploy finalizado com sucesso"
+Write-Title "Deploy finalizado com sucesso!"

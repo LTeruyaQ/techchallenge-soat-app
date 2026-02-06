@@ -60,6 +60,12 @@ variable "eks_node_role" {
   type        = string
 }
 
+variable "lab_role" {
+  description = "IAM Role do Laboratório AWS Academy"
+  type        = string
+  default     = "LabRole"
+}
+
 # ============================================
 # Variáveis do EKS
 # ============================================
@@ -86,6 +92,21 @@ variable "node_min_size" {
   description = "Número mínimo de nodes"
   type        = number
   default     = 1
+}
+
+# ============================================
+# Variáveis do ECR
+# ============================================
+
+# A variável ecr_repo_name foi removida. O nome agora é fixo
+# O build da imagem foi desativado para contornar restrições do ECR.
+# A imagem pública será usada diretamente.
+# ============================================
+
+variable "alb_hostname" {
+  description = "Hostname do Application Load Balancer (ALB) criado pelo Ingress do EKS. Usado na segunda fase do apply."
+  type        = string
+  default     = ""
 }
 
 # ============================================
@@ -117,13 +138,8 @@ variable "docker_image_tag" {
 }
 
 # ============================================
-# Variáveis do Banco de Dados (Supabase)
+# Variáveis do Banco de Dados (RDS)
 # ============================================
-
-variable "db_host" {
-  description = "Host do banco de dados PostgreSQL (Supabase)"
-  type        = string
-}
 
 variable "db_port" {
   description = "Porta do banco de dados"

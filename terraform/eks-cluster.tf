@@ -11,12 +11,12 @@ resource "aws_eks_cluster" "eks" {
   }
 
   # Usando role do AWS Academy
-  role_arn = data.aws_iam_role.eks_cluster_role.arn
+  role_arn = local.eks_cluster_role_arn
   version  = "1.31"
 
   vpc_config {
     subnet_ids         = aws_subnet.public[*].id
-    security_group_ids = [aws_security_group.eks.id]
+    security_group_ids = [aws_security_group.eks_cluster.id]
   }
 
   tags = {

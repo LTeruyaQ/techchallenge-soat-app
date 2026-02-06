@@ -1,22 +1,5 @@
-# ============================================
-# ECR Repository
-# ============================================
-
-resource "aws_ecr_repository" "app" {
-  name         = var.docker_image_repo
-  force_delete = true
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  tags = {
-    Project = var.project_name
-    Env     = var.environment
-  }
-
-  lifecycle {
-    # Ignora se o repositório já existir (evita erro de conflito)
-    ignore_changes = [name]
-  }
-}
+# Este arquivo foi limpo.
+# A gestão do repositório ECR foi movida do Terraform para o script
+# de deploy (deploy-completo.ps1) para contornar erros de permissão
+# ecr:DescribeRepositories no ambiente restrito do AWS Academy.
+# O repositório agora é criado usando a AWS CLI.

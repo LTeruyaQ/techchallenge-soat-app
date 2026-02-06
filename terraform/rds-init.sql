@@ -1,0 +1,21 @@
+CREATE TABLE public.Clientes ( Id uuid PRIMARY KEY, Nome varchar NOT NULL, Sexo varchar, Documento varchar NOT NULL, DataNascimento varchar NOT NULL, TipoCliente varchar NOT NULL, DataCadastro timestamptz NOT NULL, DataAtualizacao timestamptz, Ativo boolean NOT NULL );
+
+CREATE TABLE public.Usuarios ( Id uuid PRIMARY KEY, Email varchar NOT NULL, Senha text NOT NULL, DataUltimoAcesso timestamptz, TipoUsuario varchar NOT NULL, RecebeAlertaEstoque boolean NOT NULL, ClienteId uuid, DataCadastro timestamptz NOT NULL, DataAtualizacao timestamptz, Ativo boolean NOT NULL, CONSTRAINT FK_Usuarios_Clientes_ClienteId FOREIGN KEY (ClienteId) REFERENCES public.Clientes(Id) );
+
+CREATE TABLE public.Contatos ( Id uuid PRIMARY KEY, IdCliente uuid NOT NULL, Email text NOT NULL, Telefone text NOT NULL, DataCadastro timestamptz NOT NULL, DataAtualizacao timestamptz, Ativo boolean NOT NULL, CONSTRAINT FK_Contatos_Clientes_IdCliente FOREIGN KEY (IdCliente) REFERENCES public.Clientes(Id) );
+
+CREATE TABLE public.Enderecos ( Id uuid PRIMARY KEY, Rua text, Bairro text, Cidade text, Numero text, CEP text, Complemento text, IdCliente uuid NOT NULL, DataCadastro timestamptz NOT NULL, DataAtualizacao timestamptz, Ativo boolean NOT NULL, CONSTRAINT FK_Enderecos_Clientes_IdCliente FOREIGN KEY (IdCliente) REFERENCES public.Clientes(Id) );
+
+CREATE TABLE public.Veiculos ( Id uuid PRIMARY KEY, Placa varchar NOT NULL, Marca varchar NOT NULL, Modelo varchar NOT NULL, Cor varchar NOT NULL, Ano varchar NOT NULL, Anotacoes varchar, ClienteId uuid, DataCadastro timestamptz NOT NULL, DataAtualizacao timestamptz, Ativo boolean NOT NULL, CONSTRAINT FK_Veiculos_Clientes_ClienteId FOREIGN KEY (ClienteId) REFERENCES public.Clientes(Id) );
+
+CREATE TABLE public.Servicos ( Id uuid PRIMARY KEY, Nome text NOT NULL, Descricao text NOT NULL, Valor numeric NOT NULL, Disponivel boolean NOT NULL, DataCadastro timestamptz NOT NULL, DataAtualizacao timestamptz, Ativo boolean NOT NULL );
+
+CREATE TABLE public.Estoques ( Id uuid PRIMARY KEY, Insumo varchar NOT NULL, Descricao varchar, Preco numeric NOT NULL, QuantidadeDisponivel integer NOT NULL, QuantidadeMinima integer NOT NULL, DataCadastro timestamptz NOT NULL, DataAtualizacao timestamptz, Ativo boolean NOT NULL );
+
+CREATE TABLE public.OrdensSevico ( Id uuid PRIMARY KEY, ClienteId uuid NOT NULL, VeiculoId uuid NOT NULL, ServicoId uuid NOT NULL, Orcamento numeric, DataEnvioOrcamento timestamptz, Descricao varchar, Status varchar NOT NULL, DataCadastro timestamptz NOT NULL, DataAtualizacao timestamptz, Ativo boolean NOT NULL, CONSTRAINT FK_OrdensSevico_Clientes_ClienteId FOREIGN KEY (ClienteId) REFERENCES public.Clientes(Id), CONSTRAINT FK_OrdensSevico_Servicos_ServicoId FOREIGN KEY (ServicoId) REFERENCES public.Servicos(Id), CONSTRAINT FK_OrdensSevico_Veiculos_VeiculoId FOREIGN KEY (VeiculoId) REFERENCES public.Veiculos(Id) );
+
+CREATE TABLE public.InsumosOrdemServico ( Id uuid PRIMARY KEY, OrdemServicoId uuid NOT NULL, EstoqueId uuid NOT NULL, Quantidade integer NOT NULL, DataCadastro timestamptz NOT NULL, DataAtualizacao timestamptz, Ativo boolean NOT NULL, CONSTRAINT FK_InsumosOrdemServico_Estoques_EstoqueId FOREIGN KEY (EstoqueId) REFERENCES public.Estoques(Id), CONSTRAINT FK_InsumosOrdemServico_OrdensSevico_OrdemServicoId FOREIGN KEY (OrdemServicoId) REFERENCES public.OrdensSevico(Id) );
+
+CREATE TABLE public.AlertasEstoque ( Id uuid PRIMARY KEY, EstoqueId uuid NOT NULL, DataCadastro timestamptz NOT NULL, DataAtualizacao timestamptz, Ativo boolean NOT NULL, CONSTRAINT FK_AlertasEstoque_Estoques_EstoqueId FOREIGN KEY (EstoqueId) REFERENCES public.Estoques(Id) );
+
+CREATE TABLE public.__EFMigrationsHistory ( MigrationId varchar PRIMARY KEY, ProductVersion varchar NOT NULL );

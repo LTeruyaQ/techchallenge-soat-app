@@ -3,10 +3,11 @@
 # ============================================
 
 resource "aws_route_table" "public" {
-  vpc_id = aws_vpc.main.id
+  vpc_id = local.vpc_id
 
   route {
-    cidr_block = aws_vpc.main.cidr_block
+    // Rota padrão para tráfego local dentro da VPC
+    cidr_block = local.vpc_cidr
     gateway_id = "local"
   }
 
@@ -23,7 +24,7 @@ resource "aws_route_table" "public" {
 
 # Associação das subnets com a route table
 resource "aws_route_table_association" "public" {
-  count          = length(aws_subnet.public)
-  subnet_id      = aws_subnet.public[count.index].id
+  count          = length(local.public_subnet_ids)
+  subnet_id      = local.public_subnet_ids[count.index]
   route_table_id = aws_route_table.public.id
 }

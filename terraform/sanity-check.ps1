@@ -6,10 +6,9 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-aws eks list-clusters --region us-east-1 --output table
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "[X] Falha ao listar clusters EKS" -ForegroundColor Red
-    exit 1
-}
+# A checagem 'eks list-clusters' foi removida pois causa erro de Acesso Negado no ambiente AWS Academy.
+# A funcionalidade principal do script (criar um novo cluster) não depende deste comando.
 
 Write-Host "[OK] AWS CLI e STS funcionando corretamente" -ForegroundColor Green
+
+# A checagem do psql foi removida pois a inicialização do banco de dados agora é feita por um Job no Kubernetes.
